@@ -1,0 +1,459 @@
+---
+title: "Does register affect optimal n-gram length for authorship verification?"
+format:
+  arxiv-pdf:
+    keep-tex: true  
+    linenumbers: false
+    doublespacing: false
+    runninghead: "A Preprint"
+    echo: false
+    message: false
+    warning: false
+  arxiv-html: default
+author:
+  - name: Nicholas Quincy Hopper
+    affiliations:
+      - name: University of Manchester
+        department: Linguistics and English Language
+        city: Manchester
+        country: UK
+        postal-code: M13 9PL
+    email: quincyhopper@gmail.com
+abstract: |
+  This document is only a demo explaining how to use the template.
+keywords: 
+  - authorship verification
+  - register
+  - ngrams
+bibliography: bibliography.bib
+---
+
+```{r}
+library(idiolect)
+library(quanteda)
+library(quanteda.textstats)
+library(glue)
+library(spacyr)
+library(ggplot2)
+library(ggeffects)
+library(dplyr)
+library(pbapply)
+library(tidyr)
+library(reshape2)
+library(viridis)
+library(knitr)
+options(kableExtra.auto_format = FALSE)
+library(kableExtra)
+library(patchwork)
+```
+
+# Introduction {#sec-intro}
+
+The entire field of authorship verification (AV), which seeks to determine if two texts were written by the same author, rests on the premise that there is, for each and every author, some aspect of their language production that is identifiably unique. It naturally follows, then, that there generally exists in every text some collection of linguistic features that convey information about its author, such that these features can be extracted to form a unique representation of that author. The very possibility of this task is, in itself, fascinating; whereas many fields in linguistics deal with aspects of language that are common to all individuals, authorship analysis seeks to identify what sets us apart from each other. The research presented here aims to highlight the intricate ways in which linguistic features manifest in our language and its effect on AV methods.
+
+One linguistic feature that has seen popularity within authorship analysis are n-grams. N-grams are sequences of $n$ features, such as words or characters, which are captured using a moving window. For example, word 2-grams capture every two-word sequence in a text, and character 6-grams capture every 6-character sequence in a text (often including whitespace). In a similarity-based approach to AV, n-grams are extracted from texts and compared to determine the likelihood of shared authorship. There is no one n-gram length that will always verify authors more accurately than another. In other words, the optimal n-gram length for AV can vary across a wide range of parameters, such as the kind of corpus that is analysed. For example, @Nini_2023 found that the optimal $n$ was larger for a corpus of industrial news texts, *c50* [@Houvardas_2006], compared to a corpus of novels *refcor*[^1]. Nini hypothesised that this was due to the former corpus being more formulaic, or making more frequent use of long sequences of words. This hypothesis is grounded in usage-based (UB) frameworks of cognitive processing, such as that presented by @Langacker_1987. These posit that an individual's knowledge of language is made up of a unique network of linguistic units, or structures that are processed automatically. Thus, the improved efficacy of longer n-grams in more formulaic corpora is due to n-grams approximating these linguistic units [@Nini_2023, p.73].
+
+[^1]: https://github.com/cophi-wue/refcor.
+
+More generally, corpus studies [@Biber_1998; @Biber_2009; @Biber_2021] have demonstrated that formulaicity varies systematically with register. If the hypothesis proposed by @Nini_2023 holds, this could suggest that the optimal n-gram length for AV is affected by register, specifically that longer n-grams are better for more formulaic registers. To test this, six distinct corpora were compiled to represent a variety of registers, ranging from informal chat logs to very formal academic articles. These are explained in more detail in @sec-data. Firstly, we demonstrate a significant negative relationship between register and formulaicity. Formulaicity was measured by breaking down samples of each corpus into n-grams of different lengths and calculating the Jaccard coefficient between them. Each sample and, by extension, each corpus, was quantified using a formality measure based on the relative distribution of parts of speech (POS) [@Heylighen_2002].
+
+We then build on these results with an AV experiment. Using the n-gram tracing algorithm [@Grieve_2018], the accuracy of different n-gram lengths was evaluated. Results showed that shorter n-grams were significantly more effective than longer n-grams for highly formal corpora. In contrast, for more informal corpora, longer n-grams often achieved accuracy levels similar to those of shorter n-grams. These findings are entirely compatible with the predictions of UB frameworks, informing further research in how register variation affects AV methods.
+
+# Literature Review {#sec-literature}
+
+The very possibility of accurate AV implies the existence of linguistic individuality, leading many researchers to neglect to explicitly examine the theoretical framework that underpins the field. As a result, there now exists a large body of literature in authorship analysis which is at best, linguistically naive and, at worst, entirely devoid of a theoretical foundation. This state of affairs likely stems from the fact that much of the research in authorship analysis is conducted by computer scientists [@Nini_2023, p.2], whose focus is often on optimising algorithms instead of explaining precisely why their methods work [@Kestemont_2014]. This is problematic because a method being accurate does not guarantee its coherence and intelligibility to the human analyst. As @Juola_2008 [p.309] points out, "to be credible, a method should also be understandable".
+
+A particularly pervasive language model within authorship analysis is one in which lexis and grammar are distinct entities, resulting in claims that "the style factor of a text is considered orthogonal to its topic" [@Stamatatos_2009, p. 544]. In other words, the lexical content of a text is entirely oblivious to the grammar with which it is conveyed. To some extent, this provides an explanation for the efficacy of character n-grams, which have been frequently employed throughout authorship analysis research [@Houvardas_2006; @Juola_2008; @Stamatatos_2009; @Sapkota_2015; @Nini_2023; @Wang_2023]. For example, @Koppel_2009 posits that their utility stems from their ability to capture thematic information in single-domain settings, a factor that is claimed to most influence style [@Wang_2023, p.3]. However, @Sapkota_2015 demonstrated that removing character n-grams related to thematic content does not result in a loss of accuracy, even when the the training and test data are of the same topic. Under a model of language in which lexis and grammar and distinct, this phenomenon is explained by the idea that stylistic information is primarily conveyed through grammar.
+
+This may also offer an explanation as to why function words perform so well at authorship analysis tasks. Function words (the closed-class category of prepositions, particles, determiners, pronouns, etc.) were first used to great success in the seminal work by @Mosteller_1964, in which the long-disputed Federalist papers were analysed. Kestemont (2014, 60) notes that they are effective because they are common to all texts, they are highly frequent, they do not correlate with topic or genre, and they seem "less under the author's conscious control during the writing process". While @Drewnowski_1977 provides evidence to support the latter point, Kestemont (2014, 61) points out that their degree of content-independence is often overstated, as they do correlate with "genre, narrative perspective, an author's gender or even a text's topic". This is also supported by @Argamon_2018 [p.26]. For example, @Biber_2021 found that four-word sequences containing pronouns are much more frequent in conversation compared to academic prose. Comparing the same registers, @Biber_2009 looked at fixed and variable word sequences and found that, in conversation, function words typically fill slots in both sequences, while the same pattern is not observed in academic prose. @Heylighen_2002 also isolated function words with respect to deixis and showed that their frequency, along with that of other word categories, can reliably predict register. Thus, while the efficacy of function words is undeniable, it is clear that a model of language in which lexis and grammar are distinct entities is incompatible with observations in corpus studies.
+
+More recently, usage-based (UB) linguistic frameworks, such as those presented by @Langacker_1987 and @Sinclair_1991, have been employed to explain why certain features are useful for authorship analysis [@Nini_2023]. @Langacker_1987 posits that the fundamental unit of language processing is the linguistic unit, which is any structure that is processed automatically by a speaker. The obvious example of such a unit are the phonemes of one's native language, which are typically produced without any perceptible mental effort (compare this to the phonemes of a foreign language, which may be producible, but could require some concentration on part of the speaker). Units are reinforced through repetition, or what @Langacker_1987 refers to as the process of entrenchment. Thus, the more a unit is processed, the more securely it becomes a part of a speaker's mental grammar, or their "structured inventory of conventional linguistic units" [@Langacker_1987, p.57].
+
+This has important consequences for authorship analysis. Firstly, UB frameworks provide an explanation for the existence of linguistic individuality, the premise on which the entire field of AV rests. Since every speaker's experience with language is heterogeneous and unique, it follows that their entrenched units will be so, and thus at any given time, no two speakers' mental grammars will consist of precisely the same linguistic units. This was formalised by @Nini_2023 as the principle of linguistic individuality.
+
+Secondly, UB frameworks offer an explanation for the efficacy of various linguistic features in authorship analysis. For example, Nini (2023, 73) posits that the reason n-grams are so useful is because they serve as good approximations for linguistic units. As such, very short, common n-grams and very long, unique n-grams achieve low accuracies because they are unlikely to be linguistic units for any given speaker. Instead, the optimal n-gram length sits somewhere in between these two extremes, or what @Nini_2023 [p.71] refers to as the individuality equilibrium. @Nini_2023 observed that the peak of this individuality equilibrium was higher for a corpus of industrial news texts compared to a corpus of novels. In other words, it appears that the optimal n-gram length varies with register. This reveals a novel and fascinating line of enquiry which is expounded in the following argument: if n-grams are good approximations of linguistic units, and the individuality equilibrium of one register lies in a different position to that of another, then it may be the case that the length of the linguistic units employed in each register are slightly different. Thus, if one can demonstrate that the length of linguistic units differs across registers, it is reasonable to suggest that register affects the optimal n-gram length for AV. One window through which this can be investigated this is the analysis of formulaic language and how it differs across registers. The rest of this section will explore this through a number of corpus studies.
+
+According to @Biber_Conrad_2009 [p.135], registers are "varieties defined by their situational characteristics". Registers exist at varying levels of specificity, ranging from, for example, the register of a character from a book to the more general register of conversation. The study of register has greatly advanced thanks to the advent of modern computers, which enabled both the collection of large corpora and the statistical analysis thereof. This has made possible the identification of recurrent sequences of words within texts, leading to the finding that a large proportion of language is not unique and original, but formulaic [@Biber_1998; @Biber_2004; @Biber_2009; @Biber_Conrad_2009; @Biber_2021]. For example, @Biber_2009 explored formulaic sequences within conversation and academic prose. The most recurrent sequences within these register were defined as 'lexical bundles', or sequences of two or more words whose frequency exceed some predetermined threshold (in this case, ten times per million words). Crucially, this analysis only considers word forms at their face value; in other words, there is no effort to lemmatise word sequences or delineate them according to their grammatical status or phrase structure. As a result, many lexical bundles rarely represent complete structural units, instead spanning two clause or phrases [@Biber_2009, p.283]. For example, the three most common four-word sequence in conversation were "I don't know if", *"*I don't know what" and "do you want to" [@Biber_2009, p.304].
+
+While recurrent word sequences are common across all registers, their distribution varies systematically. Specifically, conversation typically contains more lexical bundles than academic prose, with approximately 30% of words occurring in lexical bundles. For academic prose, this proportion is 21% [@Biber_2021, p.98]. This demonstrates that, when lexical bundles are identified with a simple frequency-driven approach, conversation is more formulaic than academic prose. This finding is neither unexpected nor unrealistic, especially when one considers the contexts of both registers. In academic writing, originality is paramount, and avoiding plagiarism is a fundamental principle. Furthermore, academic texts often aim to convey complex ideas concisely, leaving little room for redundancy, which is typically reduced through extensive revision. In contrast, conversational speech unfolds spontaneously, where originality is less emphasized, and redundancy serves a practical role in facilitating real-time communication.
+
+Lexical bundles also vary systematically across registers in terms of the POS they employ and their discourse functions. For example, Biber, Conrad and Reppen (1998, 284) found that in conversation, approximately 90% of bundles are declarative or interrogative clause segments, with around 50% beginning with a personal pronoun followed by a verb phrase. In academic prose, however, 74% of lexical bundles consisted of noun phrases, with no common bundles involving verb phrases. Indeed, Biber, Conrad, and Reppen (1998, 136) state that the relative frequency of POS serve as the most distinctive characteristic of any register. This assertion is explicitly leveraged by @Heylighen_2002, who designed a measure of formality, $F$, derived from the relative frequency of POS across different corpora. Rather than appealing to the concept of register, the authors base their thesis on the related notion of contextuality. @Hall_1976 defines a high-context situation as one in which the majority of the information is conveyed through context, and therefore, communication can be implicit. Examples of such situations are conversations between friends or personal letters. A low-context situation, on the other hand, is one in which the risk of misinterpretation is high, and therefore expression is made to be as unambiguous as possible. These include legal, technical and scientific texts [@Heylighen_2002, p.302]. The authors showed that high-context registers employ more words with a deictic function (pronouns, verbs, adverbs and interjections), while low-context registers employ more words whose meaning is less ambiguous (nouns, adjectives, prepositions, determiners).
+
+With respect to discourse, lexical bundles in English serve three distinct functions: stance expressions, discourse organisers and referential expressions, which are defined as follows:
+
+> Stance bundles express attitudes or assessments of certainty that frame some other proposition. Discourse organizers reflect relationships between prior and coming discourse. Referential bundles make direct reference to physical or abstract entities, or to the textual context itself, either to identify the entity or to single out some particular attribute of the entity as especially important [@Biber_2004 p.384].
+
+Interestingly, @Biber_2009 observed that the distribution of these functions varies across registers. In conversation, four-word lexical bundles are predominantly stance expressions, with only a small number serving as discourse organisers. Academic prose, on the other hand, relies almost exclusively on the referential function. Suggesting that "formulaic expressions develop to serve the most important communicative needs of a register" [@Biber_2009, p.285]. This is a statement of remarkable consequence and captures a significant finding for the present study: register determines the structure of formulaic language.
+
+Formulaic language is undeniably pervasive, and models of language production must adequately account for this. @Sinclair_1991 offers one such account, proposing that language production operates according to two principles: the open-choice principle and the idiom principle. The former conforms to the traditional approach that, when producing language, each individual word constitutes a choice for the speaker [@Erman_2000, p.30]. That is, at any point during an utterance, the only constraint on word choice is grammatical validity. However, the open-choice principle cannot fully account for the prevalence of formulaic language, which is better explained by the idiom principle. This states that speakers have at their disposal a multitude of prefabricated phrases which function as single choices, despite being made up of multiple segments. This likely arises as a "natural tendency to economy of effort" [@Sinclair_1991, p.10], and thus explains the widespread lack of original composition [@Nini_2023, p.13]. This model of language is compatible with that of @Langacker_1987, since it places great emphasis on the role of the repetition of linguistic units–and, therefore, memory–on language processing.
+
+In summary, the literature on authorship analysis suggests a clear interaction between linguistic individuality, feature frequency and register variation. While traditional models often separate lexis and grammar, recent UB models detail how linguistic units emerge through the process of entrenchment. This offers an explanation for the existence of linguistic individuality and the efficacy of n-grams in AV. @Sinclair_1991's models of language production, which are consistent with other UB models [@Langacker_1987], also provide an explanation for the prevalence of formulaic language. Multiple corpus studies have demonstrated that this phenomenon varies with register, which @Nini_2023 suggests may affect the optimal n-gram length for AV. This provides a foundation for the present study, which examines this further. The following sections describe the data and methods used to investigate this question.
+
+# Data {#sec-data}
+
+In order to investigate the affect of register on n-gram length, it is essential to analyse a wide range of registers so that differences can be compared. In this study, six different corpora were selected from the training data used in @Nini_2024, ranging from academic prose to informal chat logs. The corpora were originally compiled to establish datasets containing common problems in authorship analysis, such as very short texts, texts authored at different times by the same individual, and texts on different topics. All pre-processing operations were conducted by @Nini_2024 and no further adjusted were made.
+
+The same set of training problems used by @Nini_2024 were employed for the AV experiment. This ensured that for each author, there were exactly two verification cases: one of same-authorship and one of different-authorship. However, the $C_\text{Stack}$ corpus differed from the others in that there was one verification case per author. This will be discussed in more detail towards the end of the section. In authorship analysis research, it is typical to refer to the document of unknown authorship as $Q$, and that of known authorship as $K$. Therefore, in each verification case, the aim is to correctly classify the authorship of $Q$ and $K$ as identical or different. The number of verification cases per corpora, along with the number of documents and authors, is shown in @tbl-vcases.
+
+The $C_\text{ACL}$ corpus contains 187 samples from scientific papers from 94 researchers, selected from the computational linguistics archive *ACL Anthology*[^2]. There are exactly two papers per author (except for one author, who has one), which were written 15.6 years apart on average. Tables, quotations and non-linguistic content (e.g. mathematics) have been removed, while in-line equations, references, and URLs, among other things, have been replaced with place holders. This corpus was selected due to being very formal, which is essential for addressing the research questions effectively.
+
+[^2]: https://aclanthology.org/
+
+The $C_\text{Amazon}$ corpus consists of 4,000 reviews written by 800 users, taken from the *Amazon Product Data* corpus published by @McAuley_2015. There are 5 documents per author, covering a wide range of 17 categories, including *electronics*, *home and kitchen,* and *beauty*. The corpus was originally preprocessed to remove sentences containing noise, such as repetitive characters and long sequences of capitalised words.
+
+The $C_\text{Blog}$ corpus is a collection of 2,400 documents written by 600 bloggers from the *Blog Authorship Corpus* published by @Schler_2006. The original dataset was compiled from *blogger.com*. Each author has 4 documents each. The corpus was preprocessed in a similar way to $C_\text{Amazon}$, removing long sequences of capitalised words and repetitive characters and words.
+
+The $C_\text{Enron}$ corpus contains 144 emails written by 32 authors from the *Enron E-Mail Dataset*[^3], which has already featured frequently in AA and AV research [@Wright_2014]. To obtain sufficient document lengths, many emails by the same author were concatenated. There are between 4 and 5 documents per author. Again, the corpus was preprocessed to remove URLs, email headers, greetings/closings, email signatures, numbers, quotations and non-letter repetitions. Furthermore, repeated spaces, tabs and line-breaks were replaced with a single space.
+
+[^3]: https://www.cs.cmu.edu/\~enron
+
+The $C_\text{PJ}$ corpus contains 296 chat logs from 104 sex offenders collected from the *Perverted-Justice*[^4] portal. It contains many instances of non-standard English, which may reduce the accuracy of the POS tagger used to calculate formality. All chat lines containing less than 5 tokens and 10 characters were removed, along with those containing usernames, timestamps, URLs and words with many repeating characters.
+
+[^4]: http://www.perverted-justice.com
+
+The $C_\text{Stack}$ corpus contains 225 posts from 150 users on the question-and-answer (Q&A) network *Stack Exchange*[^5] in 2019. There are 173 unique communities on the network that focus on a wide range of topics, such as linguistics and philosophy. For this corpus, the verification cases were constructed slightly differently. In cases of same-authorship, $K$ and $Q$ were taken from two distinct communities: 'Cross Validated' and 'Academia', respectively. In cases of different-authorship, $K$ and $Q$ were both taken from 'Cross Validated'. This was done in order to punish AV methods that rely on topical features.
+
+[^5]: https://stackexchange.com
+
+```{r}
+#| label: tbl-vcases
+#| tbl-cap: "Statistics relevant to the AV experiment. V. cases denotes the number of verification cases, while avg($K$) and avg($Q$) denote the mean number of tokens in the known and unknown documents respectively."
+
+corpora_stats <- data.frame(
+  "Docs"     = c(186, 4000, 2400, 144, 296, 225),
+  "authors"  = c(94, 800, 600, 32, 104, 150),
+  "V. cases" = c(186, 1600, 1200, 64, 208, 150),
+  "K"        = c(1669, 846, 730, 769, 0, 2085),
+  "Q"        = c(2490, 854, 865, 888, 0, 1922)
+)
+
+rownames(corpora_stats) <- c("$C_{\\text{ACL}}$", "$C_{\\text{Amazon}}$", "$C_{\\text{Blog}}$", "$C_{\\text{Enron}}$", "$C_{\\text{PJ}}$", "$C_{\\text{Stack}}$")
+
+kbl(corpora_stats, booktabs = T, linesep = "", escape = FALSE,
+    col.names = c("Corpus", "Documents", "Authors", "V. cases", "avg($K$)", "avg($Q$)")) %>%
+  kable_styling(font_size = 10, full_width = F)
+```
+
+# Methodology
+
+This section establishes the relationship between formulaicity and formality within the corpora, before detailing how the AV experiment is conducted. To begin, an explanation of the key metrics used in this paper is provided. The entire analysis was conducted using the R language [@Rstudio].
+
+## Formality {#sec-formality}
+
+To make effective cross-corpora comparisons, it is necessary to have an empirical measure capable of delineating individual documents within a corpus, and by extension, the corpora as wholes. To this end, @Heylighen_2002's $F$ metric was employed, which can differentiate corpora based on the relative distribution of their parts-of-speech (POS). A higher output indicates a more formal text, while a lower output indicates a more informal text. The output is bound by 0 and 1, although such extremes are unrealistic. This metric is useful for two reasons: (1) it is simple to compute and (2) research has shown that the relative distribution of POS is a good proxy for register, as discussed in @sec-literature. For example, @Heylighen_2002 showed that written texts have greater $F$ scores than spoken texts.
+
+This capability stems from the underlying principle that, in a high-context situation, one can expect to find a high proportion of words with a deictic function–that is, words that make reference to the "spatio-temporal or communicative context for their interpretation" [@Heylighen_2002, p.306]. Perhaps the most obvious member of this class is the pronoun, as its referent is almost never self-evident and must, instead, be inferred from the context. Verbs come under this class since their morphology makes implicit reference to tense and subject. Adverbs, by extension, also come under this class because their frequency is proportional to that of verbs. Finally, interjections are included. The presence of these four lexical categories contribute to a lower $F$ score. Conversely, the non-deictic class of words include nouns, adjectives and prepositions. Indeed, these categories can have multiple meanings, but the correct one is understood in much wider contexts than that of, say, a pronoun. Again, by extension, determiners come under this class because their frequency is proportional to that of nouns. By calculating the sum of the frequencies of non-deictic words and subtracting the frequencies of deictic words, a measure is derived that serves as an approximation of the formality of a register:
+
+$$
+\begin{split} F = &\ (\text{Noun freq.} + \text{Adj. freq.} + \text{Prep. freq.} + \text{Det. freq.} \\ &\ - \text{Pron. freq.} - \text{Verb freq.} - \text{Adv. freq.} - \text{Int. freq.} + 1) \cdot 50 \end{split}
+$$ {#eq-formality}
+
+To measure the formality of each corpus, the following algorithm was used:
+
+1.  For every corpus:
+2.  Group the documents by author (to allow for larger sample sizes).
+3.  Take 50 random samples of 1,000 tokens and break them down in word tokens.
+4.  Use a tagger to tag each token with its respective POS.
+5.  For each sample, sum the counts of each relevant lexical category and calculate $F$ according to @eq-formality.
+
+Given that @Heylighen_2002 found that academic texts produced greater $F$ scores, it is expected that $C_\text{ACL}$ and $C_\text{Stack}$ are the most formal. Alternatively, it is reasonable to expect $C_\text{Blog}$ to have a lower $F$ due to its more casual register.
+
+## Formulaicity
+
+To quantify how formulaic a register is, an objective empirical measure is also required. Simply counting the number of recurrent word sequences, as demonstrated by @Biber_2021, is insufficient due to significant variation in corpora sizes. Instead, document samples were analysed into word n-grams and the similarity between their feature sets was calculated using the Jaccard coefficient. This is achieved by taking the size of the intersection of the two feature sets in question and dividing it by the size of the union:
+
+$$
+J(A,B) = \frac{|A \cap B|}{|A \cup B|}
+$$ {#eq-jaccard}
+
+For example, take the two sentences:
+
+1.  The woman took the train home.
+2.  The man once took the train home.
+
+Let $A$ and $B$ be the set of word 1-grams extracted from (1) and (2) respectively:
+
+> $A=\{\text{the, woman, took, train, home}\}$
+>
+> $B=\{\text{the, man, once, took, train, home}\}$
+
+Given that $A \cap B= \{\text{the, took, train, home}\}$, the size of the intersection is 4. The size of the union is 7, because $A \cup B = \{\text{the, woman, man, took, once, train, home}\}$. Therefore, $J(A,B) = \frac{3}{7} = 0.43$. This simple process can be used to measure the similarity between many documents within a corpus. One method involves calculating the Jaccard coefficient between random samples from a corpus. Since the amount of formulaic language in a corpus is effectively the frequency with which n-grams are repeated, the average of these coefficients represents the extent to which that corpus, as a whole, is formulaic.
+
+For each corpus, the following algorithm was used:
+
+1.  Take the same samples used to calculate $F$ in @sec-formality.
+2.  Break each sample down into word n-grams of lengths 1-5.
+3.  For every possible pairwise combination of each feature set, except where the author of both samples is the same, calculate the Jaccard coefficient.
+
+## AV Experiment
+
+The AV experiment seeks to establish whether two given documents were written by the same author. To verify authorship, the n-gram tracing algorithm was followed [@Grieve_2018]: firstly, for every verification case, $Q$ and $K$ are broken down into word n-grams of length $n$ in the range $1 \le n \le 6$ . The following coefficient was then calculated in order to measure the similarity between $Q$ and $K$:
+
+$$
+S=\frac{|Q \cap K|}{|Q|}
+$$ {#eq-ngramtracing}
+
+This coefficient differs slightly from the Jaccard coefficient in that the denominator is the number of n-grams in $Q$ instead of the size of the union between $Q$ and $K$. This means that the similarity between $Q$ and $K$ is calculated relative only to the elements in $Q$, rather than the total distinct elements across both $Q$ and $K$. As a result, this measure emphasises how much of $Q$ is contained within $K$, making it directional and asymmetric, unlike the Jaccard coefficient, which is symmetric and accounts for mutual overlap in both sets.
+
+Authorship was predicted using leave-one-out cross-validation (LOOCV). For each verification case, a logistic regression model was trained on the similarity scores and ground truths from all other verification cases. The model was then used to classify authorship for the excluded case. A decision threshold of 0 was applied to the model's predicted logits: cases with positive logits were classified as 'same-author', while those with negative logits were classified as 'different-author'.
+
+# Results
+
+```{r}
+combined_formality <- readRDS("combined_formality.rds")
+main_char <- readRDS("main_char.rds")
+main_word <- readRDS("main_word.rds")
+```
+
+```{r}
+#| label: fig-formality_boxplot
+#| fig-cap: "Median and range of $F$ for each corpus."
+
+combined_formality %>%
+  ggplot(aes(x = reorder(corpus, -f, FUN = median), y = f)) +
+  labs(x = "Corpus", y = "Formality") +
+  geom_boxplot() + 
+  theme_minimal(base_size = 10) + 
+  theme(text = element_text(family = "Times"))
+```
+
+@fig-formality_boxplot is a box plot that shows the distribution of $F$ scores for the texts in each corpus. As expected, $C_\text{ACL}$ was much more formal than any other corpus, with a mean $F$ of 69.17 (Median = 69.54, $SD$ = 3.24). @tbl-category_frequencies indicates that this is due to the corpus' relatively high proportion of nouns, prepositions and determiners. This is consistent with @Biber_2021's findings that, in academic prose, lexical bundles are related to noun phrases and prepositional phrases. $C_\text{Stack}$ showed a similar distribution of category frequencies, and consequently was the second most formal, with a mean $F$ of 59.7 (Median = 59.6, $SD$ = 3.96). This high $F$ score is expected given the technical terminology used throughout the corpus. $C_\text{Amazon}$ had a mean $F$ of 55.9 (Median = 56.22, $SD$ = 3.77). $C_\text{Enron}$ had a mean $F$ of 55.88. (Median = 55.28, $SD$ = 5.5), with some remarkably formal outliers. This is likely due to some emails being particularly technical. $C_\text{Blog}$ had a low mean proportion of nouns and the second highest mean proportion of pronouns, for a mean $F$ of 52.34 (Median = 52.36, $SD$ = 5.09). Finally, $C_\text{PJ}$ had the lowest mean $F$ of 41.9 (Median = 42.2, $SD$ = 3.22), with a markedly higher proportion of pronouns than any other corpus.
+
+```{r}
+#| label: tbl-category_frequencies
+#| tbl-cap: "Mean frequencies (percents) of lexical categories per 1,000 words. Frequencies do not add up to 100% because some categories were omitted."
+
+frequencies <- combined_formality %>%
+  group_by(corpus) %>%
+  summarize(
+    across(c(noun_freq, adj_freq, adp_freq, det_freq, pron_freq, verb_freq, adv_freq, intj_freq), 
+           ~ round(mean(.x) * 100, 2))) %>%
+  rename(
+    "Noun" = noun_freq,
+    "Adj." = adj_freq,
+    "Prep." = adp_freq,
+    "Det." = det_freq,
+    "Pron." = pron_freq,
+    "Verb" = verb_freq,
+    "Adv." = adv_freq,
+    "Intj." = intj_freq,
+    Corpus = corpus) %>%
+  mutate(
+    Corpus = case_when(
+      Corpus == "ACL" ~ "$C_{\\text{ACL}}$",
+      Corpus == "Stack" ~ "$C_{\\text{Stack}}$",
+      Corpus == "Amazon" ~ "$C_{\\text{Amazon}}$",
+      Corpus == "Enron" ~ "$C_{\\text{Enron}}$",
+      Corpus == "Blog" ~ "$C_{\\text{Blog}}$",
+      Corpus == "PJ" ~ "$C_{\\text{PJ}}$"
+    )
+  ) %>%
+  # Reorder the Corpus column
+  mutate(
+    Corpus = factor(Corpus, levels = c(
+      "$C_{\\text{ACL}}$", 
+      "$C_{\\text{Stack}}$", 
+      "$C_{\\text{Amazon}}$", 
+      "$C_{\\text{Enron}}$",
+      "$C_{\\text{Blog}}$",
+      "$C_{\\text{PJ}}$"
+    ))
+  ) %>%
+  arrange(Corpus)
+
+# Render the table
+kbl(frequencies, booktabs = TRUE, linesep = "", escape = FALSE) %>%
+  add_header_above(c(" " = 1, "Formal" = 4, "Contextual" = 4)) %>%
+  kable_styling(font_size = 10, full_width = TRUE, latex_options = "hold_position")
+```
+
+@fig-word_f_jaccard shows the relationship between the mean $F$ of text-pairs and their Jaccard coefficient for word n-grams. There was a negative relationship, which is consistent with previous predictions. $C_\text{ACL}$ exhibited very low formulaicity for all word n-grams, a result that was expected given our knowledge of formulaicity and register variation.
+
+```{r}
+#| label: fig-word_f_jaccard
+#| fig-cap: "Relationship between mean $F$ and Jaccard coefficient for word n-grams. Regression lines represent the line of best fit for each corpus. Plots are faceted by $n$ with a free-scaled y-axis."
+#| fig-width: 14
+#| fig-height: 8
+
+main_word |>
+  filter(n < 4) |>
+  ggplot(aes(x = mean_f, y = jaccard, color = corpus)) +
+  labs(x = "Mean F", y = "Jaccard", color = "Corpus") +
+  geom_point(size = 0.05) +
+  facet_wrap(~n, scales = "free_y") +
+  geom_smooth(method = 'lm') +
+  theme_minimal() + 
+   theme_minimal(base_size = 20) +  # Adjust the base text size
+  theme(
+    text = element_text(family = "Times"),
+    axis.text = element_text(size = 20),   # Axis labels
+    strip.text = element_text(size = 20),  # Facet labels
+    legend.text = element_text(size = 20), # Legend text
+    legend.title = element_text(size = 20) # Legend title
+  )
+```
+
+An interesting finding is that $C_\text{PJ}$ was the most formulaic for individual words. This is likely due to the corpus' fixed topic and low overall formality. $C_\text{Amazon}$ was the second most formulaic for individual words. One possible explanation for this is that, while the topic of each text varies, the authors resort to similar words to describe their experiences with products. Indeed, in @tbl-word_types, the words \[good\], \[great\] and \[really\] dominate the most frequent word n-grams for $C_\text{Amazon}$. More generally, however, the results show that lexical bundles in more formal corpora are associated with phrasal modifiers within noun phrases (e.g \[of the\] and \[the number of\]), while less formal corpora tend to deal in dependent clauses (e.g. \[if you have\] and \[i feel like\]). These results are consistent with wider research in register variation [@Sardinha_2019].
+
+```{r}
+#| label: tbl-word_types
+#| tbl-cap: "Word n-gram types."
+
+df <- readRDS("topwords.rds")
+
+df <- df %>%
+  mutate_all(linebreak) %>%
+  tibble::rownames_to_column(var = "n")
+
+kbl(df, booktabs = T, escape = FALSE,
+    col.names = c("$n$", "$C_{\\text{ACL}}$", "$C_{\\text{Stack}}$", "$C_{\\text{Amazon}}$", "$C_{\\text{Enron}}$", "$C_{\\text{Blog}}$", "$C_{\\text{PJ}}$")) %>%
+  kable_styling(font_size = 8) %>%
+  row_spec(c(1,2), hline_after = T)
+```
+
+At the level of individual word, the most most common n-gram types for more formal corpora are predominantly nouns like \[language\] and \[model\]. Moving to the more contextual side, verbs become more frequent, such as \[know\] and \[get\]. The most frequent word 2-grams are almost always fragments of prepositional phrases, like \[to the\] and \[of a\], and copular constructions like \[this is\] and \[it is\]. Interestingly, the only noticeable difference between the corpora at this level is the prominence of pronouns in the less formal ones.
+
+To determine if the relationship between mean $F$ and the Jaccard coefficient for word n-grams was significant, a Poisson regression model was initially considered, as it is commonly used for count data [@Winter_2019, p.218]. However, the variance of the intersections (1959.64) for all text combinations was much higher than the mean intersection (58.9). A likelihood ratio test was run comparing a negative binomial model to a Poisson model, which indicated a significant difference $(\chi^2(1)=15702.93,\text{p}<0.001)$. Consequently, it was decided to employ a negative binomial regression model. This is more suitable for handling overdispersed count data because it accounts for variability that exceeds what is expected under a Poisson model.
+
+The negative binomial regression model predicts the log size of the intersection of a text-pair using their mean $F$, the squared length of the n-gram, and the log size of the union as an offset variable (to model the Jaccard coefficient). The model was calculated for word n-gram lengths in the range $1\le n \le 3$. The results are summarised in @tbl-model.
+
+```{r}
+#| label: tbl-model
+#| tbl-cap: "Summary of model."
+
+nb_model <- readRDS("nb_model.rds") 
+
+model_summary <- summary(nb_model)
+coefficients <- model_summary$coefficients
+
+df <- data.frame(
+  Estimate = coefficients[, 1],
+  Std_Error = coefficients[, 2],
+  Z_value = coefficients[, 3],
+  P_value = coefficients[, 4]
+)
+
+rownames(df) <- c("Intercept", "$F$", "$n^2$")
+df$P_value <- format.pval(df$P_value, digits = 3, eps = 0.001)
+
+
+kbl(df, "latex", booktabs = T, linesep = "", escape = FALSE,
+    col.names = c("Estimate", "Std Error", "$z$-value", "$p$-value")) %>%
+  kable_styling(font_size = 10, full_width = T, latex_options = "hold_position")
+```
+
+The intercept $(-0.57)$ was significant. Although a mean $F$ score of zero and an $n$ of zero are not realistic, this serves as the baseline for the model. Mean $F$ had a significant negative effect $(-0.01)$, meaning that a one–unit increase in formality is associated with a decrease of 0.01 in the log expected intersection. In other words, a one-unit increase in formality approximately results in a 1.1% decrease in the expected intersection $(\text{exp}(-0.0108)\approx 0.989)$. The significant negative effect of $n^2$ was particularly strong. Increasing $n^2$ by one results in a 38% reduction in expected intersection $(\text{exp}(-0.4707) \approx 0.625)$.
+
+```{r}
+#| label: fig-model
+#| fig-cap: "Predicted intersection as a function of mean F and n-gram length."
+
+predictions <- predict_response(nb_model, terms = c("mean_f", "n [1,2,3]", "union [850, 1400, 1938]"))
+
+ggplot(predictions, aes(x = x, y = predicted, color = group)) +
+  geom_line() +
+  labs(
+    x = "Mean F", 
+    y = "Predicted Intersection", 
+    color = "n"
+  ) +
+  facet_wrap(~facet, labeller = labeller(facet = function(f) paste("Union =", f))) +
+  theme_minimal() + 
+  theme(text = element_text(family = "Times"))
+```
+
+@fig-model visualises the model's predictions, using a range of values for $F$, while keeping the union constant at 850, 1,400 and 1,938. These sizes were chosen to represent the range of union sizes in the actual samples. Word n-gram lengths in the range 1-3 were used. Note that while the model include a quadratic term for $n$, the lines plotted against $F$ appear largely linear. This is expected, as the curvature primarily affects the relationship with $n$, not with $F$. This figure effectively demonstrates the relationship between formality/formulaicity, which is consistent with the literature on register variation. Overall, there is a non-linear negative relationship between formality and formulaicity. This relationship is strongest when $n=1$, weaker when $n=2$ and weaker still when $n=3$. A larger union size is associated with a larger intersection size, especially when $n=1$.
+
+Now, we present the results of the AV experiment. @tbl-av_results provides a summary of the metrics used to evaluate the experiment, including accuracy, the Area Under the Curve (AUC), F1, Precision and Recall. One observation is that precision tends to increase with $n$. A possible explanation for this regards the frequency of shared long n-grams: at a length like $n=6$, it is likely that only documents of same-authorship have any n-grams in common. Therefore, if two documents share even a few n-grams–thus producing a higher similarity coefficient–predicting a case of same-authorship is likely to be correct. As a result, fewer false positives are generated. However, since long n-grams are rare in themselves, many same-authorship documents still have low similarity coefficients, and thus many false negatives are produced. This is demonstrated by the fact that recall generally decreased as $n$ increased.
+
+```{r}
+#| label: fig-CI
+#| fig-cap: "Confidence intervals for accuracy across different n-gram lengths for each corpora. Points represent the mean accuracy, while error bars indicate the 95% confidence intervals."
+
+CI_table <- readRDS("CI_table.rds")
+
+ggplot(CI_table, aes(x = n, y = `Accuracy`)) +
+geom_point(size = 1) +
+geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2) +
+facet_wrap(~ Corpus) +
+scale_x_continuous(breaks = unique(CI_table$n)) + # Explicitly label n values
+labs(x = "N-gram length",
+     y = "Accuracy") + 
+theme_minimal() +
+theme(text = element_text(family = "Times"))
+```
+
+@fig-CI shows the confidence intervals for the accuracy metric across different n-gram lengths. For $C_\text{ACL}$, shorter n-grams achieved a significantly higher accuracy than longer n-grams. The same effect may be present within $C_\text{Stack}$, although, potentially due to the size of the corpus, this result is not significant. For the more informal corpora, longer n-grams often achieved accuracies comparable to those shorter n-grams, which may suggest that these multi-word expressions function as single units, akin to individual words. This pattern was also observed in $C_\text{ACL}$. Overall, the results of the AV experiment confirm the hypothesis that the optimal n-gram length varies systematically with register.
+
+```{r}
+#| label: tbl-av_results
+#| tbl-cap: "Evaluation results."
+
+av_results <- readRDS("av_results.rds")
+
+final_df <- av_results %>%
+  # Round all metric columns to 3 decimal places
+  mutate(
+    Accuracy = round(Accuracy, 3),
+    AUC = round(AUC, 3),
+    F1 = round(F1, 3),
+    Precision = round(Precision, 3),
+    Recall = round(Recall, 3)
+  ) %>%
+  # Rename metrics to shortened names
+  rename(
+    "Acc." = Accuracy,
+    "Prec." = Precision,
+    "Rec." = Recall
+  ) %>%
+  # Arrange for clarity (optional)
+  arrange(Corpus, n) %>%
+  mutate(
+    Corpus = recode(Corpus,
+                    "ACL" = "$C_{\\text{ACL}}$",
+                    "Amazon" = "$C_{\\text{Amazon}}$",
+                    "Blog" = "$C_{\\text{Blog}}$",
+                    "Enron" = "$C_{\\text{Enron}}$",
+                    "PJ" = "$C_{\\text{PJ}}$",
+                    "Stack" = "$C_{\\text{Stack}}$")
+  )
+
+# Create the table:
+kbl(final_df, format = "latex", booktabs = TRUE, longtable = TRUE, escape = FALSE) %>%
+  collapse_rows(columns = 1, valign = "top") %>%
+  kable_styling(font_size = 8, latex_options = 'repeat_header')
+```
+
+It is important to note that the use of confidence intervals to evaluate accuracy results is not standard within authorship analysis. To start, the data used to calculate the confidence intervals does not consist of independent observations. Multiple authors appear more than once in the samples, and therefore it is likely that the linguistic features frequently employed by any given author occur across more than one text. As such, it cannot be said that each observation contributes unique information to the analysis, nor that the variance in the accuracy results is due to independent variability. This lack of independence can lead to underestimated variability, resulting in overly narrow confidence intervals that may falsely suggest greater accuracy than is warranted.
+
+Furthermore, the use of confidence intervals to identify the optimal n-gram length may be overly rigorous and misaligned with the goals of authorship analysis. Confidence intervals are typically used to quantify uncertainty in parameter estimates under assumptions such as independence, random sampling and normality. However, these assumptions may not hold in the data used in this study, where the occurrence of linguistic features are inherently correlated due to texts of same authorship, topic, genre and register. That said, confidence intervals still provide a useful indication of the differences in accuracy between different n-gram lengths, although it is important to interpret these results with caution.
+
+# Discussion
+
+We first demonstrated that registers vary in formulaicity, before introducing and evaluating a novel AV approach that leverages this insight. In this section, we summarise how our findings align with prior work, discuss theoretical and practical implications for AV and cognitive linguistics, and acknowledge key limitations.
+
+This work investigated the effect of register on the optimal n-gram length for authorship verification (AV), driven by the hypothesis that differences in formulaicity across registers influence the effectiveness of n-grams of varying lengths. As such, we investigate the impact of formality on the optimal n-gram length as a function of its relationship with formulaic language. Firstly, we established a significant negative relationship between register formality (measured using $F$) and formulaicity (measured using the Jaccard coefficient on word n-grams). Specifically, more formal registers exhibited lower levels of n-gram repetition than less formal registers. Secondly, we found that shorter word n-grams $(n=1 \text{ to }n=2)$ achieved significantly higher accuracy for the most formal corpus $(C_\text{ACL})$, whereas longer word n-grams $(n=3 \text{ to }n=6)$ often performed comparably to shorter ones in less formal corpora $(C_\text{ACL}, C_\text{Blog}, C_\text{Enron})$. These findings suggest that the optimal n-gram length varies systematically with register. This outcome aligns with the theoretical expectation longer word n-grams are better suited to capture the multi-word formulaic expressions employed in less formal corpora. The significantly poorer performance of longer n-grams in $C_\text{ACL}$ further reinforces this conclusion.
+
+Moreover, the findings extend and align with previous research in authorship analysis, register variation and UB frameworks. @Nini_2023 observed that the optimal n-gram length differed between corpora and hypothesised a link between formulaicity and the individuality equilibrium, or the length at which n-grams best approximate linguistic units. This study empirically confirms this observation across a wider spectrum of registers and provides direct quantitative evidence linking linking formulaicity to this variation in optimal n-gram length. Furthermore, the application of @Heylighen_2002's $F$ metric successfully differentiated the corpora in terms of formality, consistent with its design principles based on contextuality and the resulting distribution of POS. The high scores for $C_\text{ACL}$ and $C_\text{Stack}$ compared to $C_\text{Blog}$ and $C_\text{PJ}$ align with expectations based on register variation [@Biber_1998].
+
+It is important to note that, while the relationship between formulaicity and formality within the corpora was consistent with research in register variation [@Biber_1998; @Biber_2004; @Biber_2009; @Biber_2021], we employed a different operationalisation of formulaicity. Biber's work focuses on sequences of two or more words, while this study, based on the intersection of word n-gram sets, includes individual words. In this sense, a text is considered formulaic according to the extent to which it repeats not only multi-word sequences, but individual words too. This approach was chosen because individual word are a useful feature in AV, and thus it is important that the formulaicity measure includes the very features being evaluated for their discriminatory power in authorship analysis. Biber's research on formulaic language is not explicitly related to AV methods, and thus the extension of formulaic language to individual words may not have been necessary. The extremely low formulaicity for $C_\text{ACL}$ at $n=1$ suggests that even single word choices may be more diverse in highly formal writing compared to informal registers like $C_\text{Amazon}$, which showed high formulaicity at $n=1$. This was possibly due to recurrent evaluative terms in product reviews.
+
+In general, the link between formulaic language and authorship analysis has received little attention, and thus these findings explore a relatively novel approach to the field. One exception is @Larner_2014, who explicitly investigated whether formulaic sequences could be used as markers of authorship. They searched Google.com for examples of formulaic sequences and compiled a list of from the first five pages of the search. Unsurprisingly, the vast majority of sequences in this list consisted of perceptually salient idioms, sayings and proverbs. According to Biber (2009, 283), a sequence is formulaic to the extent that it occurs throughout a corpus, and idioms are typically very infrequent. Therefore, there is no guarantee that the sequences identified by @Larner_2014 are formulaic at all, or whether they even appear in the test data. Indeed this method produced poor accuracies, as "no author \[used\] a single formulaic sequence across all \[of their texts\]" [@Larner_2014, p.10]. In contrast, the present study empirically measured formulaicity as the degree of n-gram repetition *within* the texts being analysed, ensuring that they are present in the test data. While @Larner_2014's results were unable to establish formulaic sequences as a useful feature for authorship attribution, the findings of this work show that the efficacy of word n-grams is significantly influenced by register formulaicity.
+
+Taken together, the results have implications for AV methods. It is clear that, in any authorship analysis task, the register of the texts involved should be considered. For example, the findings suggest that, when dealing with a corpus of very formal texts, one may achieve greater accuracy by using shorter word n-grams instead of longer ones. Perhaps where this consideration is most relevant is in a cross-domain context, where the disputed document(s) and the known document(s) are of different registers. Such was the data in @Goldstein_2009, who also employed cross-validation to attribute the authorship of a corpus of written texts and audio samples. They achieved greater accuracy when the register of the test and train data were identical. Unfortunately, the authors do not offer a theoretical explanation for the disparity in accuracy. @Wang_2021b also achieved poorer accuracy in a cross-register setting compared to a same-register setting, positing that this is the result of some authors' having a more vernacular writing style than others. However, this does not get to the root of why this should result in poorer accuracy. While neither study used word n-grams, the lack of theoretical explanation is problematic. On the other hand, the present research establishes a connection between the optimal n-gram length and register formulaicity, making the poorer accuracy of cross-domain scenarios explainable and therefore predictable. That is, when using word n-grams, one can expect poorer accuracies in cross-register scenarios compared to same-register scenarios because the lengths of the units employed in each register are different. This is especially important in forensic cases, where compiling a corpus of same-register texts may be impossible.
+
+This work also has important implications for cognitive linguistics, particularly in the context of UB frameworks. These models emphasise that linguistic knowledge is shaped by the heterogeneous and unique experience that speakers have with language, where linguistics units become reinforced through repetition [@Langacker_1987]. @Nini_2023 states that unique repertoires of linguistic units that an individual has at their disposal constitutes linguistic individuality, or the principle that at any given time, no two individuals share precisely the same set of units. The results of this study suggest a link between formulaicity and individuality, particularly in how these units manifest in different registers. So, while the principle of linguistic individuality does imply that individuals employ units in predictable and identifiable ways in all contexts, this study highlights that the length of these units depends on register. One plausible explanation for this phenomenon is that the idiom principle [@Sinclair_1991] is adhered to more often in informal registers as a means of reducing cognitive effort, as there is less need to convey dense and complex information.
+
+However, the study is, of course, not without its limitations. The main issue lies with the compilation of the corpora. The corpora were taken from @Nini_2024, who compiled them in order to address various challenges in authorship analysis. These include problems like texts written many years apart $(C_\text{ACL})$ and texts with differing topics $(C_\text{Stack})$. While this study does not attempt to explore the optimal methods for these specific scenarios, nor whether word n-grams are more or less appropriate for them, it is possible that the characteristics of these corpora influenced the results of the AV experiment. Furthermore, the entire study may have been less complex if less corpora were used. For example, the formality and formulaicity $C_\text{Amazon}$ and $C_\text{Enron}$ were very similar, and thus the inclusion of either one of them may have been redundant. Additionally, the confidence intervals in the AV experiment were difficult to compare due to differences in the sizes of the corpora. For example, $C_\text{Amazon}$ had 25 times more verification cases than $C_\text{Enron}$ (1,600 vs. 64). As such, the confidence intervals were much larger in $C_\text{Enron}$, making it difficult to distinguish the most accurate n-gram length. An improved study would use corpora of similar sizes in order to make clearer comparisons.
+
+# Conclusion
+
+In conclusion, this dissertation has explored how register influences the optimal word n-gram length for AV. In accordance with research on corpus studies, principally @Biber_2009 and @Biber_2021, the results demonstrated that formulaicity varies systematically with register. Specifically, when measured using the distribution of POS [@Heylighen_2002], it was demonstrated that formality is negatively correlated with formulaicity. Separate findings from @Nini_2023 suggested that differences in formulaicity may account for differences in n-gram effectiveness across registers. Using the n-gram tracing algorithm [@Grieve_2018], an AV experiment on five distinct corpora demonstrated that shorter n-grams achieved significantly higher accuracies for very formal corpora compared to more informal corpora. As such, the results serve as a basis for some practical take-aways: when analysing highly formal corpora, like legal or scientific articles, shorter word n-grams may be more accurate than longer n-grams. Conversely, when analysing more informal texts, such as online posts or even speech, longer n-grams may be more accurate due to their being more formulaic. Finally, in cross-domain scenarios, one can expect a drop in accuracy when using word n-grams due to differing degrees of formulaicity.
+
+These findings contributed to a wider body of literature on cognitive linguistics that state that linguistic units are the foundation of language processing [@Langacker_1987]. Not only do such UB frameworks offer a plausible explanation for the ubiquity of formulaic language, but they also lay the theoretical groundwork for theories of linguistic individuality. This is especially important for improving methods in AV and interpreting results. Whereas previously researchers have paid little attention to offering theoretical explanations for their results [@Kestemont_2014], appealing to UB frameworks of language processing allows one to make reasonable predictions about datasets. This study, for example, shows that an understanding of how formulaicity manifests across different registers allows for sound predictions about the effectiveness of word n-grams in a wide variety of registers, ranging from formal academic articles to informal online blog posts. From a theoretical standpoint, then, the findings provide good evidence for the existence of linguistic units and their use in different communicative situations.
+
+As such, the paper as a whole highlights the utility of a theoretical understanding of linguistic individuality. However, the question remains as to whether these patterns hold cross-linguistically. Since theories of cognitive processing should apply to all humans, and therefore all languages, it is reasonable to expect that formulaic language is a universal phenomenon. That said, the methodology employed in this study, specifically the distribution of POS to measure formality, may not be consistent across all languages. It may be the case that formality and formulaicity are not negatively correlated in every given languages. Furthermore, the POS-tagger used here may not be applicable to agglutinative languages, where the boundaries of words are less clear. This presents a worthwhile avenue for further research, perhaps one that explores different ways of quantifying registers. Another question that this study has not answered is whether formulaicity measured with character n-grams also correlates with the optimal character n-gram length for AV. To test this, the same methodology used here could be easily applied to corpora of similar average word lengths. In this way, it would be possible to explore how morphological patterns distribute across registers and the extent to which they belong to individuals' personal grammars.
+
+To sum, this research provides good evidence that register, by virtue of its systematic effect on formulaicity, affects the optimal word n-gram length for AV. The findings deepen our understanding of how communicative context affects AV and contribute to a theoretical foundation for understanding *why* word n-grams are useful.
+
+# References

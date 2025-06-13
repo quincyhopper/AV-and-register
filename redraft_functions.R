@@ -79,13 +79,10 @@ performance_table <- function(acl_authorship, stack_authorship, amazon_authorshi
       # Filter the data frame for the current n-gram length
       df_n <- dplyr::filter(corpora[[corpus_name]], n == n_val)
       
-      # Compute performance; assume performance() returns a list with evaluation and roc elements.
+      # Compute performance
       perf <- performance(df_n)
       
       # Extract the desired metrics.
-      # Note: We assume the names in perf$evaluation are:
-      # "Balanced Accuracy", "AUC", "F1", "Precision", and "Recall".
-      # You can adjust these if the actual names differ.
       acc       <- perf$evaluation$`Balanced Accuracy`
       auc       <- perf$evaluation$AUC
       f1        <- perf$evaluation$F1
@@ -154,6 +151,100 @@ top_word_table <- function(acl, stack, amazon, enron, blog, PJ) {
   
   as.data.frame(result)
 }
+
+# Takes 50 samples of 1000 tokens from corpus
+jaccard_sample <- function(corpus, sample_length, num_of_samples) {
+  
+  samples <- corpus_group(corpus, groups = author) |>
+    chunk_texts(size = sample_length) |>
+    corpus_sample(size = num_of_samples)
+  
+  return(samples)
+}
+
+# Returns data frame of Jaccard coefficient for every pairwise combo of texts
+jaccard <- function(samples, feature, corpus_name) {
+  
+  max_n <- ifelse(feature == 'character', 20, 10)
+  
+  results_df <- pblapply(1:max_n, function(n) {
+    # Create weighted document-feature matrix
+    dfm_matrix <- tokens(samples, what = feature) |>
+      tokens_ngrams(n = n) |>
+      dfm() |>
+      dfm_weight(scheme = 'boolean')
+    
+    # Get document names
+    doc_names <- rownames(dfm_matrix)
+    
+    # Compute pairwise overlap and union
+    overlaps <- tcrossprod(as.matrix(dfm_matrix)) # Intersection counts
+    row_sums <- rowSums(as.matrix(dfm_matrix))
+    unions <- outer(row_sums, row_sums, "+") - overlaps # Union counts
+    
+    # Jaccard similarity
+    jaccard_matrix <- overlaps / unions
+    
+    # Convert to long format
+    pairwise_data <- expand.grid(A = doc_names, B = doc_names) |>
+      mutate(
+        A = as.character(A),
+        B = as.character(B),
+        overlap = as.vector(overlaps),
+        union = as.vector(unions),
+        jaccard = as.vector(jaccard_matrix)
+      ) |>
+      filter(A < B) |>  # Remove duplicate comparisons
+      mutate(
+        author_A = sub("\\.[0-9]+$", "", as.character(A)),
+        author_B = sub("\\.[0-9]+$", "", as.character(B))
+      ) |>
+      filter(author_A != author_B) |>  # Exclude same-author pairs
+      mutate(n = n, corpus = corpus_name)
+    
+    return(pairwise_data)
+  })
+  
+  # Combine results from all n-gram sizes
+  results_df <- do.call(bind_rows, results_df)
+  
+  return(results_df)
+}
+
+# Returns data frame of the relative frequencies of all relevant POS, as well 
+# as the computed F measure
+measure_formality <- function(samples, corpus_name) {
+  
+  df <- spacy_parse(samples,
+                    pos = TRUE,
+                    tag = FALSE,
+                    lemma = FALSE,
+                    entity = FALSE,
+                    dependency = FALSE,
+                    nounphrase = FALSE,
+                    multithread = FALSE,
+                    additional_attributes = NULL) |>
+    filter(pos != "SPACE") |> # Remove the "SPACE" pos tag
+    group_by(doc_id) |>
+    reframe(
+      total_pos = n(),  # Total number of POS tags (excluding SPACE)
+      noun_freq = sum(pos == "NOUN", na.rm = TRUE) / total_pos,
+      adj_freq = sum(pos == "ADJ", na.rm = TRUE) / total_pos,
+      adp_freq = sum(pos == "ADP", na.rm = TRUE) / total_pos,
+      det_freq = sum(pos == "DET", na.rm = TRUE) / total_pos,
+      pron_freq = sum(pos == "PRON", na.rm = TRUE) / total_pos,
+      verb_freq = sum(pos == "VERB", na.rm = TRUE) / total_pos,
+      adv_freq = sum(pos == "ADV", na.rm = TRUE) / total_pos,
+      intj_freq = sum(pos == "INTJ", na.rm = TRUE) / total_pos,
+      f = ((noun_freq + adj_freq + adp_freq + det_freq - 
+              pron_freq - verb_freq - adv_freq - intj_freq + 1) * 50)  # Scale to 100 and divide by 2
+    ) |>
+    mutate(corpus = corpus_name) |> # Add corpus column
+    ungroup()  # Ensure the result is ungrouped
+  
+  return(df)
+}
+
 
 # Calculates the mean number of tokens in a corpus' 'known' texts and 'unknown'
 # texts

@@ -9,6 +9,9 @@
 #
 # Note: some functions get masked by some of the packages, so I tend to only
 # run up to viridis until I calculate the model.
+#
+# Load training_Origininal and training_problems into the global environment
+# before starting.
 # =============================================================================
 
 library(idiolect)
@@ -59,14 +62,14 @@ stack_word_jaccard <- jaccard(stack_samples, feature = 'word', 'Stack')
 perv_word_jaccard <- jaccard(perv_samples, feature = 'word', "PJ")
 
 # 3. Combine Jaccard results into one data frame
-word_jaccards <- bind_rows(acl_word_jaccard,
+combined_jaccard <- bind_rows(acl_word_jaccard,
                            amazon_word_jaccard,
                            blog_word_jaccard,
                            enron_word_jaccard,
                            stack_word_jaccard,
                            perv_word_jaccard)
 
-# 4. Calculate formality for each corpus
+# 4. Calculate formality and ld for each corpus
 acl_formality <- measure_formality(acl_samples, 'ACL')
 amazon_formality <- measure_formality(amazon_samples, 'Amazon')
 blog_formality <- measure_formality(blog_samples, 'Blog')
@@ -83,7 +86,7 @@ combined_formality <- bind_rows(acl_formality,
                                 perv_formality)
 
 # 5. Combine Jaccard results and formality results into one data frame
-main_word <- word_jaccards |>
+main_word <- combined_jaccard |>
   left_join(dplyr::select(combined_formality, doc_id, f), by = c("A" = "doc_id")) |>
   rename(f_A = f) |>
   left_join(dplyr::select(combined_formality, doc_id, f), by = c("B" = "doc_id")) |>
@@ -140,22 +143,22 @@ saveRDS(nb_model, "nb_model.rds")
 # =============================================================================
 
 # 1. For each corpus, run AV for the training problems
-acl_authorship <- attribute_authorship(acl_corp, 
+acl_authorship <- verify_authorship(acl_corp, 
                                        problems = training_problems, 
                                        corp_name = "ACL")
-amazon_authorship <- attribute_authorship(amazon_corp, 
+amazon_authorship <- verify_authorship(amazon_corp, 
                                           problems = training_problems, 
                                           corp_name = "Amazon")
-blog_authorship <- attribute_authorship(blog_corp, 
+blog_authorship <- verify_authorship(blog_corp, 
                                         problems = training_problems, 
                                         corp_name = "Koppel's Blogs")
-enron_authorship <- attribute_authorship(enron_corp, 
+enron_authorship <- verify_authorship(enron_corp, 
                                          problems = training_problems, 
                                          corp_name = "Enron")
-stack_authorship <- attribute_authorship(stack_corp, 
+stack_authorship <- verify_authorship(stack_corp, 
                                          problems = training_problems, 
                                          corp_name = "StackExchange")
-perv_authorship <- attribute_authorship(perv_corp, 
+perv_authorship <- verify_authorship(perv_corp, 
                                         problems = training_problems, 
                                         corp_name = "Perverted Justice")
 

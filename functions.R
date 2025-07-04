@@ -5,7 +5,7 @@
 # =============================================================================
 
 # Runs ngram tracing on all the training problems (n = 1-6)
-attribute_authorship <- function(corpus, problems, corp_name) {
+verify_authorship <- function(corpus, problems, corp_name) {
   
   # Extract known/unknown texts
   doc_names <- docnames(corpus)
@@ -240,6 +240,58 @@ measure_formality <- function(samples, corpus_name) {
               pron_freq - verb_freq - adv_freq - intj_freq + 1) * 50)  # Scale to 100 and divide by 2
     ) |>
     mutate(corpus = corpus_name) |> # Add corpus column
+    ungroup()  # Ensure the result is ungrouped
+  
+  return(df)
+}
+
+# Measures formality and lexical density
+formality_ld <- function(samples, corpus_name) {
+  
+  # Tokenise
+  toks <- tokens(samples, 
+                 what = "word",
+                 remove_punct = TRUE,
+                 remove_symbols = TRUE,
+                 remove_numbers = TRUE,
+                 remove_url = TRUE)
+  
+  # Calculate total tokens and content tokens
+  total_tokens <- ntoken(toks)
+  content_tokens <- tokens_remove(toks, stopwords("english")) |> ntoken()
+  
+  # Calculate lexical density
+  lexical_density <- content_tokens / total_tokens
+  
+  # Make data frame of formality and LD
+  df <- spacy_parse(samples,
+                    pos = TRUE,
+                    tag = FALSE,
+                    lemma = FALSE,
+                    entity = FALSE,
+                    dependency = FALSE,
+                    nounphrase = FALSE,
+                    multithread = FALSE,
+                    additional_attributes = NULL) |>
+    filter(pos != "SPACE") |> # Remove the "SPACE" pos tag
+    group_by(doc_id) |>
+    reframe(
+      total_pos = n(),  # Total number of POS tags (excluding SPACE)
+      noun_freq = sum(pos == "NOUN", na.rm = TRUE) / total_pos,
+      adj_freq = sum(pos == "ADJ", na.rm = TRUE) / total_pos,
+      adp_freq = sum(pos == "ADP", na.rm = TRUE) / total_pos,
+      det_freq = sum(pos == "DET", na.rm = TRUE) / total_pos,
+      pron_freq = sum(pos == "PRON", na.rm = TRUE) / total_pos,
+      verb_freq = sum(pos == "VERB", na.rm = TRUE) / total_pos,
+      adv_freq = sum(pos == "ADV", na.rm = TRUE) / total_pos,
+      intj_freq = sum(pos == "INTJ", na.rm = TRUE) / total_pos,
+      f = ((noun_freq + adj_freq + adp_freq + det_freq - 
+              pron_freq - verb_freq - adv_freq - intj_freq + 1) * 50)  # Scale to 100 and divide by 2
+    ) |>
+    mutate(
+      corpus = corpus_name,  # Add corpus column
+      LD = lexical_density[doc_id]  # Add lexical density by matching doc_id
+    ) |> 
     ungroup()  # Ensure the result is ungrouped
   
   return(df)

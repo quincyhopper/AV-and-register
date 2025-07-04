@@ -300,36 +300,16 @@ formality_ld <- function(samples, corpus_name) {
 
 # Calculates the mean number of tokens in a corpus' 'known' texts and 'unknown'
 # texts
-tokens_per_QK <- function(corpus) {
+tokens_per_QK <- function(corp) {
   
-  doc_names <- docnames(corpus)
+  doc_names <- docnames(corp)
   
-  K_corpus <- corpus_subset(corpus, author %in% training_problems$known_author)
-  if (ndoc(K_corpus) == 0) {
-    stop("K corpus is empty. Check if 'author' matches any 'known_author' in training_problems.")
-  }
-  
-  K_corpus <- corpus_subset(K_corpus, grepl("^known", doc_names))
-  if (ndoc(K_corpus) == 0) {
-    stop("K corpus is empty after filtering for 'known' doc names.")
-  }
-  
-  K <- K_corpus |>
+  K <- corpus_subset(corp, grepl("^known", doc_names)) |>
     ntoken() |>
     mean() |>
     round(0)
-  
-  Q_corpus <- corpus_subset(corpus, author %in% training_problems$unknown_author)
-  if (ndoc(Q_corpus) == 0) {
-    stop("Q corpus is empty. Check if 'author' matches any 'unknown_author' in training_problems.")
-  }
-  
-  Q_corpus <- corpus_subset(Q_corpus, grepl("^unknown", doc_names))
-  if (ndoc(Q_corpus) == 0) {
-    stop("Q corpus is empty after filtering for 'unknown' doc names.")
-  }
-  
-  Q <- Q_corpus |>
+
+  Q <- corpus_subset(corp, grepl("^unknown", doc_names)) |>
     ntoken() |>
     mean() |>
     round(0)

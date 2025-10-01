@@ -2,3 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
+.DS_Store
+paper_files/
+*.log
+*.tex
+*.pdf
+CI_table.rds

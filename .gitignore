@@ -7,4 +7,4 @@ paper_files/
 *.log
 *.tex
 *.pdf
-CI_table.rds
+*.aux

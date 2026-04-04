@@ -100,8 +100,8 @@ main_word <- combined_jaccard |>
   )
 
 # 7. Save data
-saveRDS(combined_formality, file = "combined_formality.rds")
-saveRDS(main_word, file = "main_word.rds")
+saveRDS(combined_formality, file = "data/combined_formality.rds")
+saveRDS(main_word, file = "data/main_word.rds")
 
 # 8. Create data frame of mean Jaccard for each n for each corpus (optional)
 options(scipen = 999)
@@ -124,7 +124,7 @@ topwords <- top_word_table(acl_samples,
                            blog_samples,
                            perv_samples)
 
-saveRDS(topwords, file =  "topwords.rds")
+saveRDS(topwords, file =  "data/topwords.rds")
 
 # =============================================================================
 # Section 3: Negative binomial regression model
@@ -133,7 +133,7 @@ saveRDS(topwords, file =  "topwords.rds")
 # 1. Model data
 nb_model<- glm.nb(overlap ~ mean_f + I(n^2) + offset(log(union)),
                   data = filter(main_word, n < 4))
-saveRDS(nb_model, "nb_model.rds")
+saveRDS(nb_model, "data/nb_model.rds")
 
 # =============================================================================
 # Section 4: Authorship verification experiment
@@ -176,7 +176,7 @@ av_results <- performance_table(acl_authorship,
                                 enron_authorship,
                                 blog_authorship,
                                 perv_authorship)
-saveRDS(av_results, file = "av_results.rds")
+saveRDS(av_results, file = "data/av_results.rds")
 
 # 3. Calculate the confidence intervals for the AV results
 problem_counts <- bind_rows(
@@ -198,4 +198,4 @@ CI_table <- av_results %>%
     lower_ci = p - qnorm(0.975) * SE,
     upper_ci = p + qnorm(0.975) * SE
   )
-saveRDS(CI_table, "CI_table.rds")
+saveRDS(CI_table, "data/CI_table.rds")

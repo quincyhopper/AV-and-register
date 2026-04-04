@@ -179,18 +179,19 @@ av_results <- performance_table(acl_authorship,
 saveRDS(av_results, file = "av_results.rds")
 
 # 3. Calculate the confidence intervals for the AV results
+problem_counts <- bind_rows(
+  training_problems |> filter(corpus != "Enron") |> count(Corpus = corpus),
+  enron_training_problems |> count(Corpus = corpus)
+) |>
+  mutate(Corpus = recode(Corpus,
+                         "Koppel's Blogs"   = "Blog",
+                         "Perverted Justice" = "PJ",
+                         "StackExchange"    = "Stack"
+  )) |>
+  rename(N = n)
+
 CI_table <- av_results %>%
-  # Add the number of verification cases per corpus using recode
-  mutate(
-    N = recode(Corpus,
-               "ACL"    = 186,
-               "Amazon" = 1600,
-               "Blog"   = 1200,
-               "Enron"  = 58,   # Derived from enron_training_problems
-               "Stack"  = 150,
-               "PJ" = 208)
-  ) %>%
-  # Compute the standard error and confidence intervals
+  left_join(problem_counts, by = "Corpus") %>%
   mutate(
     p = Accuracy,
     SE = sqrt(p * (1 - p) / N),

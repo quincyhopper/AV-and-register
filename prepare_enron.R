@@ -12,6 +12,7 @@ enron_path <- "data/enron_cleaned/Enron_Training_cleaned/"
 
 all_files <- list.files(enron_path, pattern = "\\.txt$", 
                         recursive = TRUE, full.names = TRUE)
+all_files <- all_files[basename(all_files) != 'truth.txt'] # exclude the groundtruth file
 
 # Deduplicate by basename - keep only first occurrence of each filename
 all_files <- all_files[!duplicated(basename(all_files))]

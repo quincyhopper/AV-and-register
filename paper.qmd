@@ -173,11 +173,11 @@ Finally, the $C_\text{Stack}$ corpus contains 225 posts from 150 users on the qu
 #| tbl-cap: "Statistics relevant to the authorship verification experiment. 'V. cases' denotes the number of verification cases, while avg($K$) and avg($Q$) denote the mean number of tokens in the known and unknown documents respectively."
 
 corpora_stats <- data.frame(
-  "Documents" = c(186, 4000, 2400, 144, 296, 225),
-  "Authors" = c(94, 800, 600, 32, 104, 150),
-  "V. cases" = c(186, 1600, 1200, 64, 208, 150),
-  "avg($K$)" = c(1669, 846, 730, 769, 528, 2085),
-  "avg($Q$)" = c(2490, 854, 865, 888, 668, 1922)
+  "Documents" = c(186,  4000, 2400, 136, 296, 225),
+  "Authors" =   c(94,   800,  600,  30,  104, 150),
+  "V. cases" =  c(186,  1600, 1200, 58,  208, 150),
+  "avg($K$)" =  c(1669, 846,  730,  739, 528, 2085),
+  "avg($Q$)" =  c(2490, 854,  865,  851, 668, 1922)
 )
 
 rownames(corpora_stats) <- c("$C_{\\text{ACL}}$", "$C_{\\text{Amazon}}$", "$C_{\\text{Blog}}$", "$C_{\\text{Enron}}$", "$C_{\\text{PJ}}$", "$C_{\\text{Stack}}$")

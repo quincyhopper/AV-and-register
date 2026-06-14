@@ -9,3 +9,5 @@ paper_files/
 *.pdf
 *.aux
 .positai
+data/enron_cleaned/
+arxiv.sty

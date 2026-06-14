@@ -10,8 +10,9 @@
 # Note: some functions get masked by some of the packages, so I tend to only
 # run up to viridis until I calculate the model.
 #
-# Load training_Origininal and training_problems into the global environment
+# Load training_Original and training_problems into the global environment
 # before starting.
+# Run prepare_enron.R to load the cleaned enron_corp into the global environment.
 # =============================================================================
 
 library(idiolect)
@@ -30,16 +31,12 @@ library(knitr)
 library(MASS)
 library(pscl)
 
-# Extract corpora
+# Extract corpora (enron_corp should be loaded already)
 acl_corp <- corpus_subset(training_Original, corpus == 'ACL')
 blog_corp <- corpus_subset(training_Original, corpus == "Koppel's Blogs")
 amazon_corp <- corpus_subset(training_Original, corpus == "Amazon")
-enron_corp <- corpus_subset(training_Original, corpus == "Enron")
 stack_corp <- corpus_subset(training_Original, corpus == "StackExchange")
 perv_corp <- corpus_subset(training_Original, corpus == "Perverted Justice")
-
-# Extract training problems for each corpus
-training_problems <- filter(training_problems, corpus %in% c("ACL", "Koppel's Blogs", "Amazon", "Enron", "StackExchange", "Perverted Justice"))
 
 # =============================================================================
 # Section 1: Calculating Jaccard and formality
@@ -85,7 +82,7 @@ combined_formality <- bind_rows(acl_formality,
                                 stack_formality,
                                 perv_formality)
 
-# 5. Combine Jaccard results and formality results into one data frame
+# 6. Combine Jaccard results and formality results into one data frame
 main_word <- combined_jaccard |>
   left_join(dplyr::select(combined_formality, doc_id, f), by = c("A" = "doc_id")) |>
   rename(f_A = f) |>
@@ -102,11 +99,11 @@ main_word <- combined_jaccard |>
     n = as.numeric(n)
   )
 
-# 6. Save data
-saveRDS(combined_formality, file = "combined_formality.rds")
-saveRDS(main_word, file = "main_word.rds")
+# 7. Save data
+saveRDS(combined_formality, file = "data/combined_formality.rds")
+saveRDS(main_word, file = "data/main_word.rds")
 
-# 7. Create data frame of mean Jaccard for each n for each corpus (optional)
+# 8. Create data frame of mean Jaccard for each n for each corpus (optional)
 options(scipen = 999)
 jaccard_summary <- combined_jaccard %>%
   group_by(n, corpus) %>%
@@ -127,7 +124,7 @@ topwords <- top_word_table(acl_samples,
                            blog_samples,
                            perv_samples)
 
-saveRDS(topwords, file =  "topwords.rds")
+saveRDS(topwords, file =  "data/topwords.rds")
 
 # =============================================================================
 # Section 3: Negative binomial regression model
@@ -136,11 +133,20 @@ saveRDS(topwords, file =  "topwords.rds")
 # 1. Model data
 nb_model<- glm.nb(overlap ~ mean_f + I(n^2) + offset(log(union)),
                   data = filter(main_word, n < 4))
-saveRDS(nb_model, "nb_model.rds")
+saveRDS(nb_model, "data/nb_model.rds")
 
 # =============================================================================
 # Section 4: Authorship verification experiment
 # =============================================================================
+
+# Extract training problems for each corpus
+training_problems <- filter(training_problems, corpus %in% c("ACL", "Koppel's Blogs", "Amazon", "Enron", "StackExchange", "Perverted Justice"))
+
+# Extract training_problems for enron corpus; some authors have been removed
+enron_authors <- docvars(enron_corp, 'author')
+enron_training_problems <- training_problems |>
+  filter(corpus == "Enron") |>
+  filter(unknown_author %in% enron_authors & known_author %in% enron_authors)
 
 # 1. For each corpus, run AV for the training problems
 acl_authorship <- verify_authorship(acl_corp, 
@@ -153,7 +159,7 @@ blog_authorship <- verify_authorship(blog_corp,
                                         problems = training_problems, 
                                         corp_name = "Koppel's Blogs")
 enron_authorship <- verify_authorship(enron_corp, 
-                                         problems = training_problems, 
+                                         problems = enron_training_problems, 
                                          corp_name = "Enron")
 stack_authorship <- verify_authorship(stack_corp, 
                                          problems = training_problems, 
@@ -170,25 +176,26 @@ av_results <- performance_table(acl_authorship,
                                 enron_authorship,
                                 blog_authorship,
                                 perv_authorship)
-saveRDS(av_results, file = "av_results.rds")
+saveRDS(av_results, file = "data/av_results.rds")
 
 # 3. Calculate the confidence intervals for the AV results
+problem_counts <- bind_rows(
+  training_problems |> filter(corpus != "Enron") |> count(Corpus = corpus),
+  enron_training_problems |> count(Corpus = corpus)
+) |>
+  mutate(Corpus = recode(Corpus,
+                         "Koppel's Blogs"   = "Blog",
+                         "Perverted Justice" = "PJ",
+                         "StackExchange"    = "Stack"
+  )) |>
+  rename(N = n)
+
 CI_table <- av_results %>%
-  # Add the number of verification cases per corpus using recode
-  mutate(
-    N = recode(Corpus,
-               "ACL"    = 186,
-               "Amazon" = 1600,
-               "Blog"   = 1200,
-               "Enron"  = 64,
-               "Stack"  = 150,
-               "PJ" = 208)
-  ) %>%
-  # Compute the standard error and confidence intervals
+  left_join(problem_counts, by = "Corpus") %>%
   mutate(
     p = Accuracy,
     SE = sqrt(p * (1 - p) / N),
     lower_ci = p - qnorm(0.975) * SE,
     upper_ci = p + qnorm(0.975) * SE
   )
-saveRDS(CI_table, "CI_table.rds")
+saveRDS(CI_table, "data/CI_table.rds")

@@ -2,16 +2,16 @@
 title: "The effect of formality on the length of idiolectal lexical bundles"
 format:
   arxiv-pdf:
-    keep-tex: false  
+    keep-tex: true
     linenumbers: false
     doublespacing: true
     echo: false
     message: false
     warning: false
     equation-numbering: all
-    pdf-engine: xelatex
+    pdf-engine: pdflatex
     authorcols: true
-tbl-cap-location: bottom
+tbl-cap-location: top
 author:
   - name: Nicholas Quincy Hopper
     affiliations:
@@ -349,8 +349,6 @@ kbl(
   kable_styling(font_size = 10, latex_options = "hold_position")
 ```
 
-The model confirms that there is a significant effect of mean $F$ on the Jaccard similarity. The model's predictions can be visualised in @fig-model. Consistently with the predictions, the best fitting model is one where formality and formulaicity are inversely correlated, with the relationship becoming weaker as the length of the n-gram increases.
-
 ```{r}
 #| label: fig-model
 #| fig-cap: "Predicted intersection as a function of mean F and n-gram length."
@@ -371,6 +369,8 @@ ggplot(predictions, aes(x = x, y = predicted, color = group)) +
   facet_wrap(~facet, labeller = labeller(facet = function(f) paste("Union =", f))) +
   theme_minimal()
 ```
+
+The model confirms that there is a significant effect of mean $F$ on the Jaccard similarity. The model's predictions can be visualised in @fig-model. Consistently with the predictions, the best fitting model is one where formality and formulaicity are inversely correlated, with the relationship becoming weaker as the length of the n-gram increases.
 
 Now, we present the results of the verification experiment. @tbl-av_results provides a summary of the metrics used to evaluate the experiment, including accuracy, the Area Under the Curve (AUC), F1, Precision and Recall. Because the same-author and different-author categories are balanced, the rest of the discussion focuses on Accuracy only.
 
@@ -418,7 +418,7 @@ kbl(
   longtable = TRUE,
   escape = FALSE
 ) |>
-  collapse_rows(columns = 1, valign = "top") |>
+  collapse_rows(columns = 1, valign = "top", row_group_label_position = "first") |>
   kable_styling(font_size = 8, latex_options = 'repeat_header')
 ```
 

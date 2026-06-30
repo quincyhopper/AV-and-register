@@ -1,0 +1,44 @@
+---
+title: "Response to reviewers"
+format: pdf
+---
+
+# Response to reviewers
+
+## Reviewer 1
+
+> 1.  In the abstract, the authors reported, "Results reveal a systematic negative relationship between formality and formulaicity: informal corpora were more formulaic and longer n-grams achieved higher accuracies than shorter ones." Regarding this statement, I have two concerns. First, these two findings do not bring anything new to our understanding. So, what is the unique contribution of the present study? Second, these two findings seem to be two distinct findings. The connections between them are not well established and they do not actually answer the question in the title "The effect of formality on the length of idiolectal lexical bundles".
+
+Although we agree that the relationship between formulaicity and formality is known, the connection between formality and effective length of n-gram (mediated by formulaicity) for authorship analysis has only been theorised but never empirically tested.
+
+We agree that the empirical analysis on formulaicity detracts from the main analysis. We therefore decided to remove it.
+
+> 2.  The title "The effect of formality on the length of idiolectal lexical bundles" gives me a feeling that it is about lexical bundles. In fact, it is about "n-gram" \[...\] using "lexical bundles" and "n-gram" interchangeably in the manuscript is not appropriate and even misleading.
+
+We gave a definition of *idiolectal lexical bundle* in the last paragraph of page 3. However, we appreciate the possible confusion so we have now changed this to *idiolectal n-gram*.
+
+> 3.  The Methodology section does not justify the use of both the N-gram Tracing algorithm (Grieve et al., 2018) and the method concerning Individuality Equilibrium by Nini (2023). Why and how these two methods could work together to achieve the authors' research goals should be explicitly explained and justified. Accordingly, their connections should also be reported in the Results section.
+
+The *Individuality Equilibrium* is not a method but a hypothesis. Any possible confusion in this regard has been addressed. More is added to explain the use of *N-gram Tracing*.
+
+> 4.  In the Discussion section, "We found that shorter word n-grams ( = 1 to = 2) achieved significantly higher accuracy for the most formal corpora, whereas longer word n-grams ( = 3 to = 6) often performed comparably to shorter ones in less formal corpora. These findings suggest that the optimal n-gram length varies systematically with register." This statement seems to contradict with the finding ("longer n-grams achieved higher accuracies than shorter ones") in the abstract, as mentioned above.
+
+This is just due to a mistake in the abstract. This has now been fixed.
+
+## Reviewer 2
+
+> On a similar note, I find it odd to only quote Biber et al papers starting in 1998 for the idea that language is mostly formulaic. Even IJCL predates this, never mind Pawley and Syder (1983) and a host of British academics.
+"lexical bundles in English serve three distinct functions: stance expressions, discourse organisers and referential expressions" - As I remember, this is the analysis from the "TESOL" report. In the MS, this is presented more like a fact. Presumably, there are other ways of looking at the functions of lexical bundles.
+There is no mention of the word counts for the different corpora. Isn't that an important variable in relation to the length of LBs? Did the author adopt the "tracing" curve approach of Grieve - taking samples of increasing (same) size from each corpus?
+Table 3 seems to be organised by frequency and some of the 4-grams include content words, indicating low frequency counts.
+Ngrams and LBs. The article refers to both ngrams and LBs throughout. The actual analysis is based on ngrams. I wouldn't treat a ngram with a minimum frequency as a LB. Is that an accepted definition? Does that mean there are two definitions of LBs, one which takes dispersion into account and one that doesn't. There is the number of documents for each corpus and so dispersion could be measured. Did I miss something? Or is it that adding dispersion complicates the analysis of idiolectal LBs.
+There is a reference to a minimum frequency of 10 per million for LBs. Does that relate to the Biber study or the current study? If the former, what is the cut-off in this article?
+More clarity on frequency is needed to judge this research.
+The author(s) seem to equate LBs with linguistic units, that is cognitively stored representations. (As far as I know, Biber is pretty neutral on cognitive representations.) Some LBs are stored units; others are not. There is a sort of cognitive undertone, with references to Langacker, entrenchment etc, which I think is misleading when dealing with ngrams. Is "of the" an entrenched linguist unit? An analysis based on linguistic units would be carried in a different manner from one based on LBs. If LBs are being used as an approximation of linguistic units, then that relationship should be explicitly laid out, rather than vaguely drifting between the two notions. There may be some subtle distinction made between entrenchment and linguistic units (e.g., "of the" is entrenched but is not a linguistic unit). If so, it needs to be explicated.
+A related confusion is the following.  Individuality Equilibrium "the the length of the effective mental units for an individual". Here, "effective" means effective in terms of authorship studies.  Later, we get for Equilibrium "the length at which n-grams best approximate linguistic units for an individual." This seems to be a cognitive claim rather than a metric useful in authorship studies. I find it dubious as a cognitive claim. LBs are great for register studies using large corpora. The link between LBs and linguistic units is not at all straightforward.
+I am not surprised by the variation in the Enron corpus - true that these are emails, but they could be about business or something technical or going for a coffee. 
+There are two themes in the article: (i) the relationship between formality and formulaicity and (ii) idiolects. Most of the paper concerns (i), which as the author(s) note is an expected relationship. The majority of results are concerned with the properties of the multi-authored corpora. 
+It is the idiolectal analysis that I am not sure about. The main result concerns the optimal length in different registers for an individual's lexical bundle. From my perspective, while a contribution, I don't see this as "laying the theoretical groundwork for theories of linguistic individuality."
+
+
+

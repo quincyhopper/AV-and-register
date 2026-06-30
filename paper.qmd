@@ -1,5 +1,5 @@
 ---
-title: "The effect of formality on the length of idiolectal lexical bundles"
+title: "The effect of formality on the length of idiolectal n-grams"
 format:
   arxiv-pdf:
     keep-tex: true
@@ -30,7 +30,7 @@ author:
         postal-code: M13 9PL
     email: andrea.nini@manchester.ac.uk
 abstract: |
-   Existing research on lexical bundles (e.g. Biber 2009) suggests that 'literate' registers such as academic prose contain longer bundles than 'oral' registers like conversation. This phenomenon is connected to formulaicity: in more formulaic registers like conversation it is more economical for speakers to retain and reuse longer sequences. We propose that this connection affects the formation of idiolectal lexical bundles, those n-grams that identify a single individual. We analysed six corpora spanning registers from academic prose to online chats, measuring the degree of 'literacy' of a register using the Formality score (Heylighen and Dewaele 2002) and formulaicity through the Jaccard coefficient. We then ran a set of authorship verification experiments using N-gram Tracing (Grieve et al., 2018) to identify the optimal n-gram length for each register. Results reveal a systematic negative relationship between formality and formulaicity: informal corpora were more formulaic and longer n-grams achieved higher accuracies than shorter ones.
+   Existing research on lexical bundles (e.g. Biber 2009) suggests that 'literate' registers such as academic prose contain shorter bundles than 'oral' registers like conversation. This phenomenon is connected to formulaicity: in more formulaic registers like conversation it is more economical for speakers to retain and reuse longer sequences. We propose that this connection explains the formation of idiolectal n-grams, defined as those n-grams that collectively identify an individual. We analysed six corpora spanning registers from academic prose to online chats, measuring the degree of 'literacy' of a register using the Formality score (Heylighen and Dewaele 2002). We then ran a set of authorship verification experiments using N-gram Tracing (Grieve et al., 2018) to identify the optimal n-gram length for each register. Results reveal a systematic negative relationship between formality and the size of idiolectal n-grams: in informal corpora, which are more formulaic, longer n-grams achieved higher accuracies than shorter ones. We give this phenomenon a cognitive interpretation connected to the status of a linguistic unit for an individual.
 keywords: 
   - lexical bundles
   - idiolect
@@ -52,43 +52,45 @@ library(ggeffects)
 
 # Introduction {#sec-intro}
 
-The study of register has greatly advanced thanks to the advent of modern computers, which enabled both the collection of large corpora and the statistical analysis thereof. This has made possible the identification of recurrent sequences of words within texts, leading to the finding that a large proportion of language is not unique and original, but formulaic [@Biber_1998; @Biber_2004; @Biber_2009; @Biber_Conrad_2009; @Biber_2021]. For example, @Biber_2009 explored formulaic sequences within conversation and academic prose. The most recurrent sequences within these registers were defined as 'lexical bundles', or sequences of two or more words whose frequency exceed some predetermined threshold (in this case, ten times per million words). Many of these lexical bundles rarely represent complete structural units, instead spanning two clause or phrases [@Biber_2009, p.283]. For example, @Biber_2009 found the three most common four-word sequence in conversation to be "I don't know if", "I don't know what" and "do you want to".
+The study of register has greatly advanced thanks to the advent of modern computers, which enabled both the collection of large corpora and the statistical analysis thereof. This has made possible the identification of recurrent sequences of words within texts, leading to the finding that a large proportion of language is not unique and original, but formulaic [@Biber_1998; @Biber_2004; @Biber_2009; @Biber_Conrad_2009; @Biber_2021]. <!--# Needs references from other traditions --> For example, @Biber_2009 explored formulaic sequences within conversation and academic prose. The most recurrent sequences within these registers were defined as 'lexical bundles', or sequences of two or more words whose frequency exceed some predetermined threshold (in this case, ten times per million words) <!--# There is actually also a criterion of dispersion for bundles, as the reviewers rightly note. Can you find out what that is and modify here? -->. Many of these lexical bundles rarely represent complete structural units, instead spanning two clause or phrases [@Biber_2009, p.283]. For example, @Biber_2009 found the three most common four-word sequence in conversation to be "I don't know if", "I don't know what" and "do you want to".
 
 While recurrent word sequences are common across all registers, their distribution varies systematically. Specifically, conversation typically contains more lexical bundles than academic prose, with approximately 30% of words occurring in lexical bundles. For academic prose, this proportion is 21% [@Biber_2021, p.988]. This demonstrates that, when lexical bundles are identified with a simple frequency-driven approach, conversation is more formulaic than academic prose. This finding is neither unexpected nor unrealistic, especially when one considers the contexts of both registers. Academic texts often aim to convey complex ideas concisely, leaving little room for redundancy. In contrast, conversational speech unfolds spontaneously and redundancy serves a practical role in facilitating real-time communication.
 
 Lexical bundles also vary systematically across registers in terms of the Part-Of-Speech they employ and their discourse functions. For example, @Biber_2009 [p.284] found that, in conversation, approximately 90% of bundles are declarative or interrogative clause segments, with around 50% beginning with a personal pronoun followed by a verb phrase. In academic prose, however, 74% of lexical bundles consisted of noun phrases, with no common bundles involving verb phrases.
 
-With respect to discourse, lexical bundles in English serve three distinct functions: stance expressions, discourse organisers and referential expressions [@Biber_2004 p.384]. @Biber_2009 [p.286] observed that the distribution of these functions also varies across registers. In conversation, four-word lexical bundles are predominantly stance expressions, with only a small number serving as discourse organisers. Academic prose, on the other hand, relies almost exclusively on the referential function. All in all research suggests that these lexical bundles develop following the constraints and pressures of their situation of usage, thus adapting to the needs of a register [@Biber_2009].
+With respect to discourse, lexical bundles in English serve three distinct functions: stance expressions, discourse organisers and referential expressions [@Biber_2004 p.384]. <!--# One reviewer said that this is not necessarily a fact but only one interpretation analysis. Can you investigate and see if you find other studies that name other functios? If not then you can just modify the wording by saying "mostly serve three distinct functions" --> @Biber_2009 [p.286] observed that the distribution of these functions also varies across registers. In conversation, four-word lexical bundles are predominantly stance expressions, with only a small number serving as discourse organisers. Academic prose, on the other hand, relies almost exclusively on the referential function. All in all research suggests that these lexical bundles develop following the constraints and pressures of their situation of usage, thus adapting to the needs of a register [@Biber_2009].
 
 ## The 'economy of effort' of lexical bundles
 
 Theories of language production have proposed accounts to explain the reasons for the pervasiveness of formulaic language. @Sinclair_1991 offers one such account in which language production operates according to two principles: the *Open-Choice Principle* and the *Idiom Principle*. The former conforms to the traditional approach that, when producing language, each individual word constitutes a choice for the speaker [@Erman_2000, p.30]. That is, at any point during an utterance, the only constraint on word choice is grammaticality. However, the Open-Choice Principle cannot fully account for the prevalence of formulaic language, which is instead better explained by the Idiom Principle. This states that speakers have at their disposal a multitude of prefabricated phrases which function as single choices, despite being made up of multiple segments. This likely arises as a "natural tendency to economy of effort" [@Sinclair_1991, p.10]. This model of language is very much compatible with several other 'usage-based' or 'cognitive' theories of language, such as that of @Langacker_1987, since these all place great emphasis on the role of repetition and automatisation of linguistic units, and therefore of memory, on language processing.
 
-@Sinclair_1991's model would predict that the structure and type of lexical bundles would depend on register, as different communicative situations have different constraints and requirements on the language. For example, because pronouns are so central to casual conversation, it is inevitable that via repetition and automatisation individuals will form units that comprise frames made up of pronouns. However, it is also plausible to hypothesise that @Sinclair_1991's model predicts that the *length* of lexical bundles would depend on the register. This is because if a register tends to be highly redundant, then it makes sense in terms of 'economy of effort' for an individual to store longer lexical bundles than in a register where there is more variation. As an extreme example, it makes sense for a flight attendant to produce much of their language spoken at work following the Idiom Principle, that is, reproducing automatised units, rather than composing the same utterances every time anew because the register of the language at their job is very repetitive. In contrast, the novelty and originality in the content of an academic paper limit the extent to which its author can rely on fully automatised units. It is therefore predictable that lexical bundles in academic prose should be shorter. This prediction has been found to be correct in empirical validation, since lexical bundles in conversation tend to be longer than lexical bundles in academic prose [@Biber_2009, p.282]. In other words, there seem to be a positive correlation between the 'literacy' of a register [@biber2014], or how 'formal' it is [@Heylighen_2002], and the length of lexical bundles in this register.
+@Sinclair_1991's model would predict that the structure and type of lexical bundles would depend on register, as different communicative situations have different constraints and requirements on the language. For example, because pronouns are so central to casual conversation, it is inevitable that via repetition and automatisation individuals will form units that comprise frames made up of pronouns. However, it is also plausible to hypothesise that @Sinclair_1991's model predicts that the *length* of lexical bundles would depend on the register. This is because if a register tends to be highly redundant, then it makes sense in terms of 'economy of effort' for an individual to store longer lexical bundles than in a register where there is more variation. As an extreme example, it makes sense for a flight attendant to produce much of their language spoken at work following the Idiom Principle, that is, reproducing automatised units, rather than composing the same utterances every time anew because the register of the language at their job is very repetitive. In contrast, the novelty and originality in the content of an academic paper limit the extent to which its author can rely on fully automatised units. It is therefore predictable that lexical bundles in academic prose should be shorter. This prediction has been found to be correct in empirical validation, since lexical bundles in conversation tend to be longer than lexical bundles in academic prose [@Biber_2009, p.282]. For all these reasons, it is a plausible to predict that there should be a negative correlation between the 'literacy' of a register [@biber2014], or how 'formal' it is [@Heylighen_2002], and the length of lexical bundles in this register.
 
 ## Lexical bundles and Linguistic Individuality
 
 Decades of success in research in Authorship Analysis, the process of determining the author of a text from an analysis of its language, have so far indicated that there generally exists in every text some collection of linguistic features that convey information about its author, such that these features can be extracted to form a unique representation of that author. However, despite significant advances in computational authorship analysis, our knowledge of *linguistic individuality* is still limited, as most fields in Linguistics deal with aspects of language that are common to all individuals [@Nini_2023].
 
-Sequences of linguistic items are also important for authorship analysis, in a similar way to how lexical bundles are important for register variation. Many successful authorship analysis methods, such as the *Impostors Method* [@koppel2014], *N-gram Tracing* [@Grieve_2018], and *LambdaG* [@Nini_2024] are in fact based on *n-grams,* sequences of $n$ words or characters. Even in the age of deep learning and Large Language Models, simple similarities based on n-grams are still used as baselines and they tend to perform almost as well as more advanced methods, sometimes even outperforming them [e.g. see @stamatatos2023; @stamatatos2022]. However, there is no one n-gram length that will always verify authors more accurately than another. The optimal n-gram length for an authorship analysis problem can vary across a wide range of parameters, such as the kind of corpus that is analysed.
+In addition to research in register variation, therefore sequences of linguistic items are also important for authorship analysis. Many successful authorship analysis methods, such as the *Impostors Method* [@koppel2014], *N-gram Tracing* [@Grieve_2018], and *LambdaG* [@Nini_2024] are in fact based on *n-grams,* sequences of $n$ words or characters. Even in the age of deep learning and Large Language Models, simple similarities based on n-grams are still used as baselines and they tend to perform almost as well as more advanced methods, sometimes even outperforming them [e.g. see @stamatatos2023; @stamatatos2022]. However, there is no one n-gram length that will always verify authors more accurately than another. The optimal n-gram length for an authorship analysis problem can vary across a wide range of parameters, such as the kind of corpus that is analysed. The relationship between n-grams and individuality is thus a aspect that is still in need of deeper investigation.
 
-Following from their definitions, a lexical bundle is an n-gram but an n-gram is not necessarily a lexical bundle. However, if any such n-gram is a sequence that an individual uses repetitively to meet the needs of a communicative situation, then clearly this n-gram, despite perhaps not meeting the register frequency/dispersion requirements for a lexical bundle, does meet the requirements for being a lexical bundle for that specific individual. An example of this process in action is shown in @wright2017's analysis of the Enron emails, where he reveals how the same individual tend to recur to the same phrases for a particular linguist action, such as "please review and let's discuss". In the present paper we therefore propose the term *idiolectal lexical bundles* to refer to those lexical sequences that individuals store for reuse.
+Following from their definitions, a lexical bundle is a n-gram but an n-gram is not necessarily a lexical bundle. For an n-gram to be called a lexical bundle it should meet certain frequency and dispersion criteria for a certain register. However, if any n-gram is a sequence that an individual uses repetitively to meet the needs of a communicative situation, then clearly this n-gram, despite perhaps not meeting the register frequency/dispersion requirements for a lexical bundle, does meet the requirements for being a lexical bundle for that specific individual only. An example of this process in action is shown in @wright2017's analysis of the Enron emails, where he reveals how the same individual tend to recur to the same phrases for a particular linguistic action, such as "please review and let's discuss".
 
 ## The Individuality Equilibrium
 
 A more general theoretical connection between authorship analysis, n-grams and Cognitive Linguistics has been recently proposed in @Nini_2023's *Theory of Linguistic Individuality*, which is in turn fundamentally based on Usage-Based Frameworks and especially on @Langacker_1987's *Cognitive Grammar.*
 
-@Langacker_1987 posits that the fundamental unit of language processing is the *linguistic unit*, which is defined as any linguistic action that is processed automatically by a speaker. The obvious example of such a unit are the phonemes of one's native language, which are typically produced without any perceptible mental effort (compare this to the phonemes of a foreign language, which may be producible, but could require some concentration on part of the speaker). Units are reinforced through repetition, or what @Langacker_1987 refers to as the process of *entrenchment*. Thus, the more a unit is processed, the more securely it becomes a part of a speaker's mental grammar, or their "structured inventory of conventional linguistic units" [@Langacker_1987, p.57]. Somewhat contrary to intuition, assuming that an individual's linguistic system emerges from their automatisations inevitably leads to a situation where "the set of units mastered by all members of a speech community might be a rather small proportion of the units constituting the linguistic ability of any given speaker" [@Langacker_1987, p. 62]. This therefore implies that at any moment in time there do not exist two individuals for whom their linguistic system is identical, a proposition that @Nini_2023 calls the *Principle of Linguistic Individuality*.
+@Langacker_1987 posits that the fundamental unit of language processing is the *linguistic unit*, which is defined as any linguistic action that is processed automatically by a speaker. The obvious example of such a unit are the phonemes of one's native language, which are typically produced without any perceptible mental effort, in contrast to the phonemes of a foreign language, which may be producible, but could require some concentration on part of the speaker. Units are reinforced through repetition, or what @Langacker_1987 refers to as the process of *entrenchment*. Thus, the more a unit is heard/used, the more securely it becomes a part of a speaker's mental grammar, which is defined as their "structured inventory of conventional linguistic units" [@Langacker_1987, p.57]. This definition implies that idiolectal lexical bundles are also a type of linguistic units.
 
-This framework thus offers an explanation for the efficacy n-grams in authorship analysis, as these character or word frequencies tend to better approximate an individual's mental linguistic units. For example, in both @Grieve_2018's and @Nini_2023's evaluations of the performance of an authorship analysis algorithm called *N-gram Tracing* at varying n-gram lengths, both very short and very long n-grams both achieved low accuracies. An explanation for this effect is that short n-grams tend to be very common, and therefore not distinctive for any particular author, while long n-grams are novel sequences that even the same author is unlikely to repeat a second time. Another way to say this is that short n-grams approximate linguistic units that are maximally entrenched for most speakers while long n-grams are novel sequences that are not entrenched at all for any speaker or, in other words, they are combinations of multiple units. The optimal n-gram length for authorship analysis, which @Nini_2023 [p.71] refers to as the *Individuality Equilibrium*, sits somewhere in between these two extremes and it is therefore likely to correspond to the the length of the effective mental units for an individual. In his empirical studies, @Nini_2023 observed that the peak of this individuality equilibrium, the length of the n-grams for which there was the best discrimination between the individuals, was higher for a corpus of industrial news texts compared to a corpus of novels. In other words, like lexical bundles, the optimal n-gram length for authorship analysis also varies systematically with register.
+Somewhat contrary to intuition, assuming that an individual's linguistic system emerges from their automatisations inevitably leads to a situation where "the set of units mastered by all members of a speech community might be a rather small proportion of the units constituting the linguistic ability of any given speaker" [@Langacker_1987, p. 62]. This therefore implies that at any moment in time there do not exist two individuals for whom their linguistic system is identical, a proposition that @Nini_2023 calls the *Principle of Linguistic Individuality*.
 
-In summary, the literature suggests a clear connection between the length of idiolectal lexical bundles and the formality of a register. Linguistic units emerge through the process of entrenchment and therefore depend on the registers in which they are found and used. In more formulaic registers, individuals will tend to form longer idiolectal lexical bundles because it is more economical. These register, however, are likely to be less 'literate' or 'formal' on the oral vs. literate cline. Therefore, it is expected that the length of idiolectal lexical bundles is affected by the formality of the register or, more precisely, that these are negatively correlated. This hypothesis is tested in the present study using a large multi-register dataset.
+This framework thus offers an explanation for the efficacy of authorship analysis algorithms based on n-grams such as *N-gram Tracing* [@Grieve_2018], as these character or word frequencies tend to better approximate an individual's mental linguistic units. N-gram Tracing's mechanism can be explained quite easily: the questioned text is assigned to the author with the greatest similarity in terms of presence/absence of n-grams of a chosen kind and length. In both @Grieve_2018's and @Nini_2023's evaluations of the performance of N-gram Tracing at varying n-gram lengths, both very short and very long n-grams achieved low accuracies. An explanation for this effect is that short n-grams tend to be very common, and therefore not distinctive for any particular author, while long n-grams are novel sequences that even the same author is unlikely to repeat a second time. In other words, short n-grams approximate linguistic units that are maximally entrenched for most speakers or, potentially, *sub-units*, since in most cases it is more economical to store longer units when possible. Long n-grams, instead, are novel sequences that are not entrenched at all for any speaker or that are combinations of multiple units. The optimal n-gram length for authorship analysis, which @Nini_2023 [p.71] refers to as the *Individuality Equilibrium*, sits somewhere in between these two extremes and it is therefore likely to correspond to the the length of the effective lexical bundle stored by an individual, the length that maximises the economy of effort. In his empirical studies, @Nini_2023 observed that the peak of this individuality equilibrium, the length of the n-grams for which there was the best discrimination between the individuals, was higher for a corpus of industrial news texts compared to a corpus of novels. In other words, like lexical bundles, the optimal n-gram length for authorship analysis also varies systematically with register.
+
+In summary, the literature suggests a clear connection between the length of idiolectal n-grams and the formality of a register. Linguistic units emerge through the process of entrenchment and therefore depend on the registers in which they are found and used. In more formulaic registers, individuals will tend to store longer sequences because it is more economical. These register, however, are likely to be less 'literate' or 'formal' on the oral vs. literate cline. Therefore, it is expected that the length of idiolectal n-grams is affected by the formality of the register or, more precisely, that these are negatively correlated. This hypothesis is tested in the present study using a large multi-register dataset.
 
 # Materials and Methods
 
 ## Methodology
 
-To begin, an explanation of the key metrics used in this paper is provided. The entire analysis was conducted using the R language [@rcoreteam2024].
+To begin, an explanation of the key methods used in this paper is provided. The entire analysis was conducted using the R language [@rcoreteam2024].
 
 ### Formality {#sec-formality}
 
@@ -96,9 +98,7 @@ The degree of 'literacy' or 'formality' of a register was approximated using @He
 
 The $F$ score is calculated using @eq-formality.
 
-$$
-F = \frac{P(\text{noun})+P(\text{adj})+P(\text{prep})+P(\text{art})-P(\text{pro})-P(\text{verb})-P(\text{adv})-P(\text{interj})+100}{2}
-$$ {#eq-formality}
+$$F = \frac{P(\text{noun})+P(\text{adj})+P(\text{prep})+P(\text{art})-P(\text{pro})-P(\text{verb})-P(\text{adv})-P(\text{interj})+100}{2}$$ {#eq-formality}
 
 where $P(\cdot)$ indicates the *relative frequency* of the POS, the count of the feature in the text divided by the total number of POS in the text, while the POS categories are, respectively: noun, adjective, preposition, article, pronoun, verb, adverb, and interjection.
 
@@ -106,39 +106,15 @@ This rationale for this formula is the underlying principle that, in those situa
 
 The $F$ score sets out a contrast between a nominal versus a verbal register, which clearly mirrors @Biber_1998's Dimension 1. However, to calculate the $F$ score one only needs to calculate the relative frequency of basic POS tags, rather than the more complex lexicogrammatical features adopted in @Biber_1998. For each corpus considered in this study (see @sec-data), the $F$ score was calculated on fifty 1,000 tokens random samples containing language from multiple authors.
 
-### Formulaicity
-
-To quantify how formulaic a register is, an objective empirical measure is also required. Simply counting the number of recurrent word sequences, as demonstrated by @Biber_2021, is insufficient if there is significant variation in corpora sizes. Instead, text samples were tokenised into word n-grams and the similarity between their feature sets was calculated using the Jaccard similarity, @eq-jaccard, which measures the proportion of the union of the two feature sets that is also found in the intersection.
-
-$$
-J(A,B) = \frac{|A \cap B|}{|A \cup B|}
-$$ {#eq-jaccard}
-
-For example, for the two sentences:
-
-1.  The woman took the train home.
-2.  The man once took the train home.
-
-Let $A$ and $B$ be the set of word 1-grams extracted from (1) and (2) respectively:
-
-$$A=\{\text{the, woman, took, train, home}\}\\
-B=\{\text{the, man, once, took, train, home}\}$$
-
-Given that $A \cap B= \{\text{the, took, train, home}\}$, the size of the intersection is 4. The size of the union is 7, because $A \cup B = \{\text{the, woman, man, took, once, train, home}\}$. Therefore, $J(A,B) = \frac{3}{7} = 0.43$.
-
-The rationale of this method is that if a register is more formulaic then on average the pairwise comparisons for that register will result in a higher Jaccard similarity than for less formulaic registers. For this analysis, only different author comparisons were included and the similarity was calculated for n-grams of $2 \le n \le 5$.
-
 ### N-gram Tracing
 
-To identify the length of the idiolectal lexical bundles in a corpus we perform an *authorship verification* experiment using the *N-gram Tracing* algorithm [@Grieve_2018]. Authorship verification refers to the problem of establishing if two texts were or were not authored by the same individual [@koppel2012]. If we define as $Q$ the text of unknown authorship and $K$ that of known authorship, a verification case is one in which the aim is to correctly classify the authorship of $Q$ and $K$ as identical or different. The rationale is to exploit the *Individuality Equilibrium* as done by @Nini_2023: the n-gram length for which the highest accuracy is obtained is likely to be the best approximation to the lexical bundles used by individuals in that particular register.
+To identify the estimated length of idiolectal n-grams for a register we perform an *authorship verification* experiment using the *N-gram Tracing* algorithm [@Grieve_2018]. Authorship verification refers to the problem of establishing if two texts were or were not authored by the same individual [@koppel2012]. If we define as $Q$ the text of unknown authorship and $K$ that of known authorship, a verification case is one in which the aim is to correctly classify the authorship of $Q$ and $K$ as identical or different. The rationale for adopting this methodology is to test the *Individuality Equilibrium* for each register, as done by @Nini_2023: the n-gram length for which the highest accuracy is obtained is likely to be the best approximation to the optimal length of the sequences stored by individuals in that particular register.
 
 The N-gram Tracing algorithm works as follows. Firstly, for every verification case, $Q$ and $K$ are turned into sets of word n-grams of length $n$. In this study we chose $n$ in the range $1 \le n \le 6$ . Then, the two sets are compared using @eq-ngramtracing.
 
-$$
-S=\frac{|Q \cap K|}{|Q|}
-$$ {#eq-ngramtracing}
+$$S=\frac{|Q \cap K|}{|Q|}$$ {#eq-ngramtracing}
 
-where $|\cdot|$ indicates the cardinality of the set. This similarity, which is mathematically identical to the Simpson coefficient [@Simpson_1943] if we assume that $|Q|>|K|$, differs from the Jaccard coefficient in that the denominator is the number of n-grams in $Q$ instead of the size of the union between $Q$ and $K$. This means that the similarity between $Q$ and $K$ is calculated relative only to the elements in $Q$, rather than the total elements across both $Q$ and $K$. As a result, this measure emphasises how much of $Q$ is contained within $K$, making it directional and asymmetric, unlike the Jaccard coefficient, which is symmetric and accounts for mutual overlap in both sets.
+where $|\cdot|$ indicates the cardinality of the set. This similarity is mathematically identical to the Simpson coefficient [@Simpson_1943] if we assume that $|Q|>|K|$.
 
 For each verification case, a logistic regression model was trained on the similarity scores and then leave-one-out cross-validation (LOOCV) was used to test the performance. A decision threshold of 0 was applied to the model's predicted logits: cases with positive logits were classified as 'same-author', while those with negative logits were classified as 'different-author'.
 
@@ -259,119 +235,6 @@ kbl(frequencies, booktabs = TRUE, linesep = "", escape = FALSE) |>
   kable_styling(font_size = 10, latex_options = "hold_position")
 ```
 
-@fig-word_f_jaccard shows the relationship between the mean $F$ of text-pairs and their Jaccard similarity for word n-grams. A negative relationship can be observed, which is consistent with predictions that formality is negatively correlated with formulaicity. $C_\text{ACL}$ exhibited very low formulaicity for all word n-grams, a result that was expected given our knowledge of formulaicity and register variation.
-
-```{r}
-#| label: fig-word_f_jaccard
-#| fig-cap: "Relationship between mean $F$ and Jaccard similarity for word n-grams with $2\\le n \\le 4$. Outliers with an absolute z-score larger than 3 were removed to help with visualisation."
-#| fig-width: 14
-#| fig-height: 8
-
-main_word |>
-  group_by(n) |> 
-  mutate(zscore = scale(jaccard)) |> 
-  ungroup() |> 
-  filter(n > 1 & n < 6 & abs(zscore) < 3) |>
-  ggplot(aes(x = mean_f, y = jaccard)) +
-  geom_violin(aes(color = corpus), alpha = 0.2) +
-  geom_point(aes(color = corpus), size = 0.05) +
-  geom_smooth(method = 'lm') +
-  facet_wrap(~n, scales = "free") +
-  labs(x = "Mean F", y = "Jaccard", color = "Corpus") +
-  theme_minimal() + 
-  theme_minimal(base_size = 20) +  # Adjust the base text size
-  theme(
-    axis.text = element_text(size = 20),   # Axis labels
-    strip.text = element_text(size = 20),  # Facet labels
-    legend.text = element_text(size = 20), # Legend text
-    legend.title = element_text(size = 20) # Legend title
-  )
-```
-
-@tbl-word_types confirms that lexical bundles in more formal corpora are associated with phrasal modifiers within noun phrases (e.g \[of the\] and \[the number of\]), while less formal corpora tend to deal in dependent clauses (e.g. \[if you have\] and \[i feel like\]), consistently with wider research in register variation [@Sardinha_2019].
-
-```{r}
-#| label: tbl-word_types
-#| tbl-cap: "Examples of word n-grams by length and corpora."
-
-readRDS("data/topwords.rds") |> 
-  slice_tail(n = 3) |> 
-  mutate_all(linebreak) |> 
-  tibble::rownames_to_column(var = "n") |> 
-  kbl(
-    booktabs = T,
-    escape = FALSE,
-    col.names = c(
-      "$n$",
-      "$C_{\\text{ACL}}$",
-      "$C_{\\text{Stack}}$",
-      "$C_{\\text{Amazon}}$",
-      "$C_{\\text{Enron}}$",
-      "$C_{\\text{Blog}}$",
-      "$C_{\\text{PJ}}$"
-    )
-  ) |>
-  kable_styling(font_size = 8, latex_options = "scale_down") |>
-  row_spec(c(1,2), hline_after = T)
-```
-
-The most frequent word 2-grams are almost always fragments of prepositional phrases, like \[to the\] and \[of a\], and copular constructions like \[this is\] and \[it is\]. Interestingly, the only noticeable difference between the corpora at this level is the prominence of pronouns in the less formal ones.
-
-To determine if mean $F$ score can significantly predict Jaccard similarity for word n-grams we fitted a negative binomial regression model, which was preferred to a Poisson model following a likelihood ratio test indicating a significant degree of overdispersion $(\chi^2(1)=15702.93,\text{p}<0.001)$. The model predicts the log size of the n-gram intersection of a text-pair using their mean $F$, the length of the n-gram, and the log size of the union as an offset variable (so to model the Jaccard similarity). The model was fitted for word n-gram lengths in the range $2\le n \le 4$. The results are summarised in @tbl-model.
-
-```{r}
-#| label: tbl-model
-#| tbl-cap: "Summary of model."
-
-nb_model <- readRDS("data/nb_model.rds")
-
-model_summary <- summary(nb_model)
-coefficients <- model_summary$coefficients
-
-df <- data.frame(
-  Estimate = formatC(coefficients[, 1], format = "f", digits = 3),
-  Std_Error = formatC(coefficients[, 2], format = "f", digits = 3),
-  Z_value = formatC(coefficients[, 3], format = "f", digits = 3),
-  P_value = format.pval(coefficients[, 4], digits = 3, eps = 0.001)
-)
-
-rownames(df) <- c("Intercept", "$F$", "$n$")
-df$P_value <- format.pval(df$P_value, digits = 3, eps = 0.001)
-
-kbl(
-  df,
-  "latex",
-  booktabs = T,
-  linesep = "",
-  escape = FALSE,
-  col.names = c("Estimate", "Std Error", "$z$-value", "$p$-value")
-) |>
-  kable_styling(font_size = 10, latex_options = "hold_position")
-```
-
-```{r}
-#| label: fig-model
-#| fig-cap: "Predicted intersection as a function of mean F and n-gram length."
-
-predictions <- predict_response(
-  nb_model, 
-  terms = c("mean_f", "n [2,3,4,5]", "union"), 
-  condition = c(union = 1)
-)
-
-ggplot(predictions, aes(x = x, y = predicted, color = group)) +
-  geom_line() +
-  labs(
-    x = "Mean F", 
-    y = "Predicted Intersection", 
-    color = "n"
-  ) +
-  facet_wrap(~facet, labeller = labeller(facet = function(f) paste("Union =", f))) +
-  theme_minimal()
-```
-
-The model confirms that there is a significant effect of mean $F$ on the Jaccard similarity. The model's predictions can be visualised in @fig-model. Consistently with the predictions, the best fitting model is one where formality and formulaicity are inversely correlated, with the relationship becoming weaker as the length of the n-gram increases.
-
 Now, we present the results of the verification experiment. @tbl-av_results provides a summary of the metrics used to evaluate the experiment, including accuracy, the Area Under the Curve (AUC), F1, Precision and Recall. Because the same-author and different-author categories are balanced, the rest of the discussion focuses on Accuracy only.
 
 ```{r}
@@ -422,46 +285,15 @@ kbl(
   kable_styling(font_size = 8, latex_options = 'repeat_header')
 ```
 
-```{r}
-#| label: fig-top-n-acc
-#| fig-cap: "Scatterplot showing the relationship between the n-gram length for the best accuracy and the average $F$-score for each corpus."
-
-CI_table <- readRDS("data/CI_table.rds") |> 
-  mutate(Corpus = as.factor(Corpus))
-
-CI_table$Corpus <- factor(
-  CI_table$Corpus,
-  levels = c("PJ", "Blog", "Enron", "Amazon", "Stack", "ACL")
-)
-
-avg.f <- combined_formality |> 
-  group_by(corpus) |> 
-  summarise(`Mean F-score` = mean(f)) |> 
-  rename(Corpus = corpus)
-
-top.accs <- CI_table |> 
-  slice_max(Accuracy, by = Corpus, n = 1) |>
-  select(Corpus, n)
-
-full_join(avg.f, top.accs) |> 
-  ggplot() +
-  aes(x = `Mean F-score`, y = n, label = Corpus) +
-  geom_point() +
-  geom_smooth(method = "lm", se = F) +
-  geom_text(nudge_x = 0.1, nudge_y = 0.15) +
-  theme_minimal() +
-  labs(y = "Length of n-gram with top accuracy")
-```
-
-@fig-top-n-acc compares the n-gram lengths resulting in the best accuracies against the mean $F$-score for each corpus. The plot contains a line of best fit. Despite a moderate negative correlation ($r = -0.457$) the associated two-tailed $p$-value is $p = 0.363$ because there are only six data points.
-
-Because of this limitation, we also present @fig-CI, which shows the 95% confidence intervals for the accuracy metric across different n-gram lengths. The interval was calculated using the standard error of a proportion, as done in @Nini_2024. These confidence intervals are typically used to quantify uncertainty in parameter estimates under assumptions such as independence, random sampling and normality. Although these assumptions may not hold in the data used in this study, where the occurrence of linguistic features are inherently correlated due to texts of same authorship, topic, genre and register, they still provide a useful indication of the differences in accuracy between different n-gram lengths weighted for the number of cases for each corpus.
+We also present @fig-CI, which shows the 95% confidence intervals for the accuracy metric across different n-gram lengths. The interval was calculated using the standard error of a proportion, as done in @Nini_2024. These confidence intervals are typically used to quantify uncertainty in parameter estimates under assumptions such as independence, random sampling and normality. Although these assumptions may not hold in the data used in this study, where the occurrence of linguistic features are inherently correlated due to texts of same authorship, topic, genre and register, they still provide a useful indication of the differences in accuracy between different n-gram lengths weighted for the number of cases for each corpus.
 
 For $C_\text{ACL}$, shorter n-grams ($n = \{1,2\}$) achieved a significantly higher accuracy than longer n-grams ($n>2$). Similarly, for the second most formal corpus in the dataset, $C_\text{Stack}$, the top performing length of the n-gram is $n=1$, meaning single words. For the more informal corpora, longer n-grams ($n = \{3,4\}$) instead achieved higher accuracies than shorter ones ($n = \{1,2\}$). For Enron, the best performing n-gram length was 4 but 5 also gave similar results. It is important to notice, however, that the relative low number of verification cases for Enron results in larger error bars, meaning that the difference between the accuracies might not be significant.
 
 ```{r}
 #| label: fig-CI
 #| fig-cap: "Confidence intervals for accuracy across different n-gram lengths for each corpora. Points represent the mean accuracy, while error bars indicate the 95% confidence intervals. The corpora are arranged by formality following the order in @fig-formality_boxplot."
+
+CI_table <- readRDS("data/CI_table.rds")
 
 CI_table |> 
   ggplot() +
@@ -481,11 +313,9 @@ The overall pattern of results of this experiment confirm the hypothesis that th
 
 # Discussion
 
-In accordance with research on corpus studies, principally @Biber_2009 and @Biber_2021, the results demonstrated that formulaicity varies systematically with register. We confirmed a significant negative relationship between register formality (measured using $F$) and formulaicity (measured using the Jaccard coefficient on word n-grams). Specifically, more formal registers exhibited lower levels of n-gram repetition than less formal registers.
-
 Using the N-gram Tracing algorithm [@Grieve_2018], an authorship verification experiment on five distinct corpora then demonstrated that shorter n-grams achieved higher accuracies for more formal corpora compared to less formal corpora. We found that shorter word n-grams $(n=1 \text{ to }n=2)$ achieved significantly higher accuracy for the most formal corpora, whereas longer word n-grams $(n=3 \text{ to }n=6)$ often performed comparably to shorter ones in less formal corpora. These findings suggest that the optimal n-gram length varies systematically with register. This outcome aligns with the theoretical expectation that longer word n-grams are better suited to capture the multi-word formulaic expressions employed in less formal corpora. The significantly poorer performance of longer n-grams in $C_\text{ACL}$ further reinforces this conclusion.
 
-These results have clear implications for authorship verification methods such as n-gram tracing, where they indicate how it is important to evaluate the register of the texts involved. For example, the findings suggest that, when dealing with a corpus of very formal texts, one may achieve greater accuracy by using shorter word n-grams instead of longer ones. Beyond their obvious application, however, the current findings contribute to our understanding of linguistic individuality in relationship to register variation.
+These results have clear implications for authorship verification methods such as N-gram Tracing, where they indicate how it is important to evaluate the register of the texts involved. For example, the findings suggest that, when dealing with a corpus of very formal texts, one may achieve greater accuracy by using shorter word n-grams instead of longer ones. Normally the decision on algorithm hyperparameters such as n-gram length are determined empirtically case by case. The contribution of this study is therefore not to methodology but to our understanding of linguistic individuality in relationship to register variation.
 
 This study offers empirical evidence for @Nini_2023's hypothesised link between formality, formulaicity and the Individuality Equilibrium, or the length at which n-grams best approximate linguistic units for an individual. Although @Nini_2023's Principle of Linguistic Individuality proposes that at any given time no two individuals share precisely the same set of units, this study highlights that one can predict the approximate *length* of these units from the communicative situation they are associated with.
 
@@ -493,16 +323,16 @@ The value of the authorship verification experiment in the present study is not 
 
 Although a link is established between formulaicity, formality and individuality, there are reasons to believe that there is more to explore. The error bars for Enron are quite large to draw firm conclusions but if formality was the best predictor of formulaicity then the highest $n$ would be found for PJ. Intuitively, it is plausible to put forward the idea that business emails might be more formulaic than web chats, especially in certain repetitive tasks and domain. In those domains, individuals are more likely to store longer units because they are more advantageous in terms of economy of efforts. Therefore, other measures that take the level of repetitions in a register into account should also be considered in the future and compared to formality.
 
-However, the study is, of course, not without its limitations. The main issue lies with the compilation of the corpora. The corpora were taken from @Nini_2024, who compiled them in order to address various challenges in authorship analysis. These include problems like texts written many years apart $(C_\text{ACL})$ and texts with differing topics $(C_\text{Stack})$. While this study does not attempt to explore the optimal methods for these specific scenarios, nor whether word n-grams are more or less appropriate for them, it is possible that other characteristics of these corpora influenced the results of the verification experiment. Additionally, for some corpora more verification cases would have been needed to obtain a clearer signal of the best performing n-gram length, as demonstrated for example by the large error bars for $C_\text{Enron}$.
+However, the study is not without its limitations. The main issue lies with the compilation of the corpora. The corpora were taken from @Nini_2024, who compiled them in order to address various challenges in authorship analysis. These include problems like texts written many years apart $(C_\text{ACL})$ and texts with differing topics $(C_\text{Stack})$. While this study does not attempt to explore the optimal methods for these specific scenarios, nor whether word n-grams are more or less appropriate for them, it is possible that other characteristics of these corpora influenced the results of the verification experiment. Additionally, for some corpora more verification cases would have been needed to obtain a clearer signal of the best performing n-gram length, as demonstrated for example by the large error bars for $C_\text{Enron}$.
 
 The question as to whether these patterns hold cross-linguistically also remains. Since theories of cognitive processing should apply to any language, it is reasonable to expect this pattern to manifest in other languages. That said, the methodology employed in this study, specifically the distribution of POS to measure formality, may not be consistent across all languages.
 
 # Conclusion
 
-In conclusion, this paper has explored how register influences the length of idiolectal lexical bundles, that is those bundles of words that an individual stores for economy of effort. The results serve as a basis for some practical and applied take-aways for authorship analysis: when analysing highly formal corpora, like legal or scientific articles, shorter word n-grams may be more accurate than longer n-grams. Conversely, when analysing more informal texts, such as online posts or even speech, longer n-grams may be more accurate due to their being more formulaic.
+In conclusion, this paper has explored how register influences the length of idiolectal n-grams, which are theorised to correpond to sequences of words that an individual stores to maximise economy of effort. The results serve as a basis for some practical and applied take-aways for authorship analysis: when analysing highly formal corpora, like legal or scientific articles, shorter word n-grams may be more accurate than longer n-grams. Conversely, when analysing more informal texts, such as online posts or even speech, longer n-grams may be more accurate due to their being more formulaic.
 
-However, the main contribution of the study is to contribute to laying the theoretical groundwork for theories of linguistic individuality. Whereas previously researchers have paid little attention to offering theoretical explanations for their results [@Kestemont_2014], appealing to Linguistics knowledge allows one to make reasonable predictions about datasets. This study, for example, shows that an understanding of register variation allows for sound predictions for applied purposes like forensic linguistics.
+However, the main contribution of the article is to contribute evidence for the theory of linguistic individuality. Whereas previously researchers have paid little attention to offering theoretical explanations for their results [@Kestemont_2014], appealing to Linguistics knowledge allows one to make reasonable predictions about datasets. This study, for example, shows that an understanding of register variation allows for sound predictions for applied purposes like forensic linguistics.
 
-To sum, this research provides good evidence that register, by virtue of its systematic effect on formulaicity, affects the optimal length for an individual's lexical bundle, thus affecting decisions about methodologies for authorship verification. The findings deepen our understanding of how communicative context affects language processing and contribute to a theoretical foundation for understanding *why* word n-grams are useful.
+To sum, this research provides evidence that register systematically affects the optimal length for an individual's lexical sequences, thus affecting decisions about methodologies for authorship verification. The findings deepen our understanding of how communicative context affects language processing and contribute to a theoretical foundation for understanding *why* word n-grams are useful.
 
 # References

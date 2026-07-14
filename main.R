@@ -1,14 +1,9 @@
 # =============================================================================
 # This script manipulates the corpora and creates the variables necessary for 
 # use in the quarto document, namely:
-# (1) formulaicity data
-# (2) formality data
-# (3) the top 10 most common ngrams in each corpora
-# (4) the model
-# (5) the AV experiment results
-#
-# Note: some functions get masked by some of the packages, so I tend to only
-# run up to viridis until I calculate the model.
+# (1) formality data
+# (2) the AV experiment results
+# (3) unique overlapping ngrams
 #
 # Load training_Original and training_problems into the global environment
 # before starting.
@@ -30,6 +25,7 @@ library(viridis)
 library(knitr)
 library(MASS)
 library(pscl)
+library(stringr)
 
 # Extract corpora (enron_corp should be loaded already)
 acl_corp <- corpus_subset(training_Original, corpus == 'ACL')
@@ -38,35 +34,32 @@ amazon_corp <- corpus_subset(training_Original, corpus == "Amazon")
 stack_corp <- corpus_subset(training_Original, corpus == "StackExchange")
 perv_corp <- corpus_subset(training_Original, corpus == "Perverted Justice")
 
+# Get summary of datasets (docs, authors, avg_Q, etc) for Table 1
+corpora_summary <- list(
+  corpus_summary(acl_corp, training_problems, "ACL", "ACL"),
+  corpus_summary(stack_corp, training_problems, "StackExchange", "Stack"),
+  corpus_summary(amazon_corp, training_problems, "Amazon", "Amazon"),
+  corpus_summary(enron_corp, enron_training_problems, "Enron", "Enron"),
+  corpus_summary(blog_corp, training_problems, "Koppel's Blogs", "Blog"),
+  corpus_summary(perv_corp, training_problems, "Perverted Justice", "PJ")
+) %>%
+  dplyr::bind_rows()
+
+saveRDS(corpora_summary, file="data/corpora_summary.rds")
+
 # =============================================================================
-# Section 1: Calculating Jaccard and formality
+# Section 1: Calculating Formality
 # =============================================================================
 
 # 1. Take 50 samples of 1000 tokens from each corpus
-acl_samples <- jaccard_sample(acl_corp, sample_length = 1000, num_of_samples = 50)
-amazon_samples <- jaccard_sample(amazon_corp, sample_length = 1000, num_of_samples = 50)
-blog_samples <- jaccard_sample(blog_corp, sample_length = 1000, num_of_samples = 50)
-enron_samples <- jaccard_sample(enron_corp, sample_length = 1000, num_of_samples = 50)
-stack_samples <- jaccard_sample(stack_corp, sample_length = 1000, num_of_samples = 50)
-perv_samples <- jaccard_sample(perv_corp, sample_length = 1000, num_of_samples = 50)
+acl_samples <- formality_sample(acl_corp, sample_length = 1000, num_of_samples = 50)
+amazon_samples <- formality_sample(amazon_corp, sample_length = 1000, num_of_samples = 50)
+blog_samples <- formality_sample(blog_corp, sample_length = 1000, num_of_samples = 50)
+enron_samples <- formality_sample(enron_corp, sample_length = 1000, num_of_samples = 50)
+stack_samples <- formality_sample(stack_corp, sample_length = 1000, num_of_samples = 50)
+perv_samples <- formality_sample(perv_corp, sample_length = 1000, num_of_samples = 50)
 
-# 2. Calculate Jaccard coefficient for the samples 
-acl_word_jaccard <- jaccard(acl_samples, feature = 'word', 'ACL')
-amazon_word_jaccard <- jaccard(amazon_samples, feature = 'word', 'Amazon')
-blog_word_jaccard <- jaccard(blog_samples, feature = 'word', 'Blog')
-enron_word_jaccard <- jaccard(enron_samples, feature = 'word', 'Enron')
-stack_word_jaccard <- jaccard(stack_samples, feature = 'word', 'Stack')
-perv_word_jaccard <- jaccard(perv_samples, feature = 'word', "PJ")
-
-# 3. Combine Jaccard results into one data frame
-combined_jaccard <- bind_rows(acl_word_jaccard,
-                           amazon_word_jaccard,
-                           blog_word_jaccard,
-                           enron_word_jaccard,
-                           stack_word_jaccard,
-                           perv_word_jaccard)
-
-# 4. Calculate formality and ld for each corpus
+# 2. Calculate formality
 acl_formality <- measure_formality(acl_samples, 'ACL')
 amazon_formality <- measure_formality(amazon_samples, 'Amazon')
 blog_formality <- measure_formality(blog_samples, 'Blog')
@@ -74,7 +67,7 @@ enron_formality <- measure_formality(enron_samples, 'Enron')
 stack_formality <- measure_formality(stack_samples, 'Stack')
 perv_formality <- measure_formality(perv_samples, "PJ")
 
-# 5. Combine formality results into one data frame 
+# 3. Combine formality results into one data frame 
 combined_formality <- bind_rows(acl_formality,
                                 amazon_formality,
                                 blog_formality,
@@ -82,61 +75,11 @@ combined_formality <- bind_rows(acl_formality,
                                 stack_formality,
                                 perv_formality)
 
-# 6. Combine Jaccard results and formality results into one data frame
-main_word <- combined_jaccard |>
-  left_join(dplyr::select(combined_formality, doc_id, f), by = c("A" = "doc_id")) |>
-  rename(f_A = f) |>
-  left_join(dplyr::select(combined_formality, doc_id, f), by = c("B" = "doc_id")) |>
-  rename(f_B = f) |>
-  mutate(
-    mean_f = (f_A + f_B)/2,
-    overlap = as.numeric(overlap),
-    union = as.numeric(union),
-    jaccard = as.numeric(jaccard),
-    f_A = as.numeric(f_A),
-    f_B = as.numeric(f_B),
-    mean_f = as.numeric(mean_f),
-    n = as.numeric(n)
-  )
-
-# 7. Save data
+# 4. Save data
 saveRDS(combined_formality, file = "data/combined_formality.rds")
-saveRDS(main_word, file = "data/main_word.rds")
-
-# 8. Create data frame of mean Jaccard for each n for each corpus (optional)
-options(scipen = 999)
-jaccard_summary <- combined_jaccard %>%
-  group_by(n, corpus) %>%
-  summarise(mean_jaccard = mean(jaccard, na.rm = TRUE), .groups = "drop") %>%
-  pivot_wider(names_from = corpus, values_from = mean_jaccard) %>%
-  mutate(across(where(is.numeric), as.numeric)) %>%
-  data.frame()
 
 # =============================================================================
-# Section 2: Extracting top 10 most common words from each corpus
-# =============================================================================
-
-# 1. Create data frame of top ten most common words for all corpora
-topwords <- top_word_table(acl_samples, 
-                           stack_samples, 
-                           amazon_samples, 
-                           enron_samples,
-                           blog_samples,
-                           perv_samples)
-
-saveRDS(topwords, file =  "data/topwords.rds")
-
-# =============================================================================
-# Section 3: Negative binomial regression model
-# =============================================================================
-
-# 1. Model data
-nb_model<- glm.nb(overlap ~ mean_f + I(n^2) + offset(log(union)),
-                  data = filter(main_word, n < 4))
-saveRDS(nb_model, "data/nb_model.rds")
-
-# =============================================================================
-# Section 4: Authorship verification experiment
+# Section 2: Authorship verification experiment
 # =============================================================================
 
 # Extract training problems for each corpus
@@ -179,23 +122,56 @@ av_results <- performance_table(acl_authorship,
 saveRDS(av_results, file = "data/av_results.rds")
 
 # 3. Calculate the confidence intervals for the AV results
-problem_counts <- bind_rows(
-  training_problems |> filter(corpus != "Enron") |> count(Corpus = corpus),
-  enron_training_problems |> count(Corpus = corpus)
-) |>
-  mutate(Corpus = recode(Corpus,
-                         "Koppel's Blogs"   = "Blog",
-                         "Perverted Justice" = "PJ",
-                         "StackExchange"    = "Stack"
-  )) |>
-  rename(N = n)
+problem_counts <- corpora_summary |>
+  dplyr::select(Corpus, N = Verification_cases)
 
 CI_table <- av_results %>%
-  left_join(problem_counts, by = "Corpus") %>%
-  mutate(
+  dplyr::left_join(problem_counts, by = "Corpus") %>%
+  dplyr::mutate(
     p = Accuracy,
     SE = sqrt(p * (1 - p) / N),
     lower_ci = p - qnorm(0.975) * SE,
     upper_ci = p + qnorm(0.975) * SE
   )
+
 saveRDS(CI_table, "data/CI_table.rds")
+
+# =============================================================================
+# Section 3: Find unique overlapping ngrams
+# =============================================================================
+
+acl_overlaps <- extract_unique_overlaps(acl_corp, 
+                                        problems = training_problems, 
+                                        corp_name = "ACL")
+amazon_overlaps <- extract_unique_overlaps(amazon_corp, 
+                                           problems = training_problems, 
+                                           corp_name = "Amazon")
+blog_overlaps <- extract_unique_overlaps(blog_corp, 
+                                              problems = training_problems, 
+                                              corp_name = "Koppel's Blogs")
+enron_overlaps <- extract_unique_overlaps(enron_corp, 
+                                          problems = enron_training_problems, 
+                                          corp_name = "Enron")
+stack_overlaps <- extract_unique_overlaps(stack_corp, 
+                                          problems = training_problems, 
+                                          corp_name = "StackExchange")
+perv_overlaps <- extract_unique_overlaps(perv_corp, 
+                                         problems = training_problems, 
+                                         corp_name = "Perverted Justice")
+
+overlap_datasets <- list(
+  "ACL"    = acl_overlaps,
+  "Enron"  = enron_overlaps,
+  "Amazon" = amazon_overlaps,
+  "Blog"   = blog_overlaps,
+  "Stack"  = stack_overlaps,
+  "PJ"     = perv_overlaps
+)
+
+# Counts of unique overlaps per corpus (just to check things look normal)
+same_author_overlaps <- summarise_overlaps(overlap_datasets, pair_type = 'same')
+different_author_overlaps <- summarise_overlaps(overlap_datasets, pair_type = 'different')
+
+# Sample 5 ngrams per corpus for n=1,3,6
+unique_ngram_examples <- sample_raw_overlaps(overlap_datasets)
+saveRDS(unique_ngram_examples, file='data/unique_ngram_examples.rds')

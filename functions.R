@@ -1,8 +1,38 @@
 # =============================================================================
 # This script contains the function that are used in the main script to create
-# all of the necessary variables. At the end of this script are some optional 
-# functions that are useful for exploring the data.
+# all of the necessary variables.
 # =============================================================================
+
+# Get the corpus stats for Table
+corpus_summary <- function(corpus, probs, corp_name, display_name) {
+  
+  # Get document names and valid authors
+  doc_names <- quanteda::docnames(corpus)
+  valid_authors <- unique(quanteda::docvars(corpus, 'author'))
+  
+  # Filter problems to only include valid authors
+  valid_probs <- probs %>% 
+    dplyr::filter(corpus == corp_name) %>%
+    dplyr::filter((known_author %in% valid_authors) & (unknown_author %in% valid_authors))
+  
+  # Calculate average K tokens
+  K <- quanteda::corpus_subset(corpus, grepl("^known", doc_names))
+  avg_K <- round(mean(quanteda::ntoken(K)), 0)
+  
+  # Calculate average Q tokens
+  Q <- quanteda::corpus_subset(corpus, grepl("^unknown", doc_names))
+  avg_Q <- round(mean(quanteda::ntoken(Q)), 0)
+  
+  # Return dataframe with all features
+  dplyr::tibble(
+    Corpus = display_name,
+    Documents = quanteda::ndoc(corpus),
+    Authors = length(valid_authors),
+    Verification_cases = nrow(valid_probs),
+    `avg(K)` = avg_K,
+    `avg(Q)` = avg_Q
+  )
+}
 
 # Runs ngram tracing on all the training problems (n = 1-6)
 verify_authorship <- function(corpus, problems, corp_name) {
@@ -28,6 +58,11 @@ verify_authorship <- function(corpus, problems, corp_name) {
     # For each n-gram length (from 1 to 6), run n-gram tracing
     results_list <- lapply(1:6, function(n){
       
+      # Skip if an author from this problem has been removed by duplicate cleaning
+      if (ndoc(Q) == 0 || ndoc(K) == 0) {
+        return(NULL)
+      }
+      
       result <- ngram_tracing(Q, K,
                               tokens = 'word',
                               remove_punct = FALSE,
@@ -36,7 +71,7 @@ verify_authorship <- function(corpus, problems, corp_name) {
                               lowercase = FALSE,
                               n = n,
                               coefficient = 'simpson',
-                              features = FALSE,
+                              features = TRUE,
                               cores = 4) |> 
         dplyr::mutate(n = n,
                       problem_index = i)  # optional: track which problem this is from
@@ -111,104 +146,14 @@ performance_table <- function(acl_authorship, stack_authorship, amazon_authorshi
   return(final_df)
 }
 
-# Calculates the top ten ngrams (1-3) for each corpus
-top_word_table <- function(acl, stack, amazon, enron, blog, PJ) {
-  # Explicitly name the corpora in the desired order:
-  corpora <- list(acl = acl,
-                  stack = stack,
-                  amazon = amazon,
-                  enron = enron,
-                  blog = blog,
-                  PJ = PJ)
-  
-  n_values <- c(1, 2, 3)
-  
-  result <- matrix("",
-                   nrow = length(n_values),
-                   ncol = length(corpora),
-                   dimnames = list(as.character(n_values), names(corpora)))
-  
-  for (corpus_name in names(corpora)) {
-    for (n in n_values) {
-      topwords <- tokens(corpora[[corpus_name]],
-                         what = 'word',
-                         remove_punct = TRUE,
-                         remove_symbols = TRUE,
-                         remove_numbers = TRUE,
-                         remove_url = TRUE,
-                         remove_separators = TRUE,
-                         concatenator = " ") |>
-        tokens_ngrams(n = n) |>
-        tokens_remove(stopwords("english")) |>
-        dfm() |>
-        topfeatures(n = 10)
-      
-      cell_text <- paste(names(topwords), collapse = "\n")
-      
-      result[as.character(n), corpus_name] <- cell_text
-    }
-  }
-  
-  as.data.frame(result)
-}
-
 # Takes 50 samples of 1000 tokens from corpus
-jaccard_sample <- function(corpus, sample_length, num_of_samples) {
+formality_sample <- function(corpus, sample_length, num_of_samples) {
   
   samples <- corpus_group(corpus, groups = author) |>
     chunk_texts(size = sample_length) |>
     corpus_sample(size = num_of_samples)
   
   return(samples)
-}
-
-# Returns data frame of Jaccard coefficient for every pairwise combo of texts
-jaccard <- function(samples, feature, corpus_name) {
-  
-  max_n <- ifelse(feature == 'character', 20, 10)
-  
-  results_df <- pblapply(1:max_n, function(n) {
-    # Create weighted document-feature matrix
-    dfm_matrix <- tokens(samples, what = feature) |>
-      tokens_ngrams(n = n) |>
-      dfm() |>
-      dfm_weight(scheme = 'boolean')
-    
-    # Get document names
-    doc_names <- rownames(dfm_matrix)
-    
-    # Compute pairwise overlap and union
-    overlaps <- tcrossprod(as.matrix(dfm_matrix)) # Intersection counts
-    row_sums <- rowSums(as.matrix(dfm_matrix))
-    unions <- outer(row_sums, row_sums, "+") - overlaps # Union counts
-    
-    # Jaccard similarity
-    jaccard_matrix <- overlaps / unions
-    
-    # Convert to long format
-    pairwise_data <- expand.grid(A = doc_names, B = doc_names) |>
-      mutate(
-        A = as.character(A),
-        B = as.character(B),
-        overlap = as.vector(overlaps),
-        union = as.vector(unions),
-        jaccard = as.vector(jaccard_matrix)
-      ) |>
-      filter(A < B) |>  # Remove duplicate comparisons
-      mutate(
-        author_A = sub("\\.[0-9]+$", "", as.character(A)),
-        author_B = sub("\\.[0-9]+$", "", as.character(B))
-      ) |>
-      filter(author_A != author_B) |>  # Exclude same-author pairs
-      mutate(n = n, corpus = corpus_name)
-    
-    return(pairwise_data)
-  })
-  
-  # Combine results from all n-gram sizes
-  results_df <- do.call(bind_rows, results_df)
-  
-  return(results_df)
 }
 
 # Returns data frame of the relative frequencies of all relevant POS, as well 
@@ -245,75 +190,199 @@ measure_formality <- function(samples, corpus_name) {
   return(df)
 }
 
-# Measures formality and lexical density
-formality_ld <- function(samples, corpus_name) {
+extract_unique_overlaps <- function(corpus, problems, corp_name, n_sizes = 1:6) {
   
-  # Tokenise
-  toks <- tokens(samples, 
-                 what = "word",
-                 remove_punct = TRUE,
-                 remove_symbols = TRUE,
-                 remove_numbers = TRUE,
-                 remove_url = TRUE)
+  # Filter to current corpus
+  corp_problems <- problems %>% 
+    dplyr::filter(corpus == corp_name)
   
-  # Calculate total tokens and content tokens
-  total_tokens <- ntoken(toks)
-  content_tokens <- tokens_remove(toks, stopwords("english")) |> ntoken()
+  if (nrow(corp_problems) == 0) {
+    stop(paste("No verification problems found in the dataset for:", corp_name))
+  }
   
-  # Calculate lexical density
-  lexical_density <- content_tokens / total_tokens
+  # Get authors in problems
+  active_q_authors <- unique(corp_problems$unknown_author)
+  active_k_authors <- unique(corp_problems$known_author)
   
-  # Make data frame of formality and LD
-  df <- spacy_parse(samples,
-                    pos = TRUE,
-                    tag = FALSE,
-                    lemma = FALSE,
-                    entity = FALSE,
-                    dependency = FALSE,
-                    nounphrase = FALSE,
-                    multithread = FALSE,
-                    additional_attributes = NULL) |>
-    filter(pos != "SPACE") |> # Remove the "SPACE" pos tag
-    group_by(doc_id) |>
-    reframe(
-      total_pos = n(),  # Total number of POS tags (excluding SPACE)
-      noun_freq = sum(pos == "NOUN", na.rm = TRUE) / total_pos,
-      adj_freq = sum(pos == "ADJ", na.rm = TRUE) / total_pos,
-      adp_freq = sum(pos == "ADP", na.rm = TRUE) / total_pos,
-      det_freq = sum(pos == "DET", na.rm = TRUE) / total_pos,
-      pron_freq = sum(pos == "PRON", na.rm = TRUE) / total_pos,
-      verb_freq = sum(pos == "VERB", na.rm = TRUE) / total_pos,
-      adv_freq = sum(pos == "ADV", na.rm = TRUE) / total_pos,
-      intj_freq = sum(pos == "INTJ", na.rm = TRUE) / total_pos,
-      f = ((noun_freq + adj_freq + adp_freq + det_freq - 
-              pron_freq - verb_freq - adv_freq - intj_freq + 1) * 50)  # Scale to 100 and divide by 2
-    ) |>
-    mutate(
-      corpus = corpus_name,  # Add corpus column
-      LD = lexical_density[doc_id]  # Add lexical density by matching doc_id
-    ) |> 
-    ungroup()  # Ensure the result is ungrouped
+  doc_names <- quanteda::docnames(corpus)
+  doc_authors <- quanteda::docvars(corpus, "author")
   
-  return(df)
+  # Get documents in these problems
+  active_q_docs <- doc_names[grepl("^unknown", doc_names) & doc_authors %in% active_q_authors]
+  active_k_docs <- doc_names[grepl("^known", doc_names) & doc_authors %in% active_k_authors]
+  active_doc_set <- c(active_q_docs, active_k_docs)
+  
+  sub_corpus <- corpus[active_doc_set]
+  
+  # Re-grab names and metadata from the subsetted corpus
+  sub_doc_names <- quanteda::docnames(sub_corpus)
+  sub_doc_authors <- quanteda::docvars(sub_corpus, "author")
+  
+  all_ngram_results <- list()
+  
+  for (n_val in n_sizes) {
+    cat(sprintf("\n--- Extracting Unique %d-grams for %s ---\n", n_val, corp_name))
+    
+    toks <- quanteda::tokens(sub_corpus, 
+                             what = "word",
+                             remove_punct = FALSE,
+                             remove_symbols = TRUE,
+                             remove_numbers = TRUE) %>% 
+      quanteda::tokens_ngrams(n = n_val)
+    
+    # Build boolean DFM for fast presence/absence checks
+    dfm_sub <- quanteda::dfm(toks) %>% 
+      quanteda::dfm_weight(scheme = "boolean")
+    
+    # Doc frequencies
+    total_df <- quanteda::docfreq(dfm_sub)
+    feat_names <- quanteda::featnames(dfm_sub)
+    
+    problem_results <- pbapply::pblapply(seq_len(nrow(corp_problems)), function(i) {
+      prob <- corp_problems[i, ]
+      q_doc <- sub_doc_names[grepl("^unknown", sub_doc_names) & sub_doc_authors == prob$unknown_author]
+      k_docs <- sub_doc_names[grepl("^known", sub_doc_names) & sub_doc_authors == prob$known_author]
+      
+      # Fallback for missing files
+      if (length(q_doc) == 0 || length(k_docs) == 0) {
+        return(dplyr::tibble(
+          problem_index = i,
+          n = n_val,
+          unknown_author = prob$unknown_author,
+          known_author = prob$known_author,
+          unique_overlap = NA_character_
+        ))
+      }
+      
+      q_doc <- q_doc[1] # Guarantee Q is a single text
+      qk_dfm <- dfm_sub[c(q_doc, k_docs), ]
+      qk_df <- colSums(qk_dfm)
+      
+      # Check feature presence in Q (row 1) and K (rows 2 to end)
+      q_has <- colSums(qk_dfm[1, , drop = FALSE]) > 0
+      k_has <- colSums(qk_dfm[2:nrow(qk_dfm), , drop = FALSE]) > 0
+      
+      # Candidate features must be present in both Q and K
+      candidates <- q_has & k_has
+      
+      if (!any(candidates)) {
+        return(dplyr::tibble(
+          problem_index = i,
+          n = n_val,
+          unknown_author = prob$unknown_author,
+          known_author = prob$known_author,
+          unique_overlap = ""
+        ))
+      }
+      
+      is_unique <- candidates & (total_df == qk_df)
+      
+      true_unique_feats <- feat_names[is_unique]
+      
+      collapsed_features <- if (length(true_unique_feats) > 0) {
+        paste(true_unique_feats, collapse = "|")
+      } else {
+        ""
+      }
+      
+      dplyr::tibble(
+        problem_index = i,
+        n = n_val,
+        unknown_author = prob$unknown_author,
+        known_author = prob$known_author,
+        unique_overlap = collapsed_features
+      )
+    })
+    
+    all_ngram_results[[as.character(n_val)]] <- problem_results
+  }
+  
+  dplyr::bind_rows(all_ngram_results)
 }
 
+summarise_overlaps <- function(overlap_list, pair_type = "different") {
+  if (!pair_type %in% c("same", "different")) {
+    stop("pair_type must be either 'same' or 'different'")
+  }
+  
+  # Combine corpora
+  combined <- dplyr::bind_rows(overlap_list, .id = "Corpus")
+  
+  if (pair_type == "same") {
+    filtered_data <- combined %>% dplyr::filter(unknown_author == known_author)
+  } else {
+    filtered_data <- combined %>% dplyr::filter(unknown_author != known_author)
+  }
+  
+  # Calculate overlap
+  summary_table <- filtered_data %>%
+    dplyr::mutate(
+      num_shared_ngrams = dplyr::if_else(
+        unique_overlap == "" | is.na(unique_overlap), 
+        0, 
+        stringr::str_count(unique_overlap, "\\|") + 1
+      )
+    ) %>%
+    # Group by Corpus and n-gram length
+    dplyr::group_by(Corpus, n) %>%
+    dplyr::summarise(
+      # Count of pairs that share at least 1 unique n-gram
+      pairs_sharing = sum(num_shared_ngrams > 0),
+      # Total count of unique n-grams shared across all these pairs
+      total_ngrams_shared = sum(num_shared_ngrams),
+      .groups = "drop"
+    )
+  
+  return(summary_table)
+}
 
-# Calculates the mean number of tokens in a corpus' 'known' texts and 'unknown'
-# texts
-tokens_per_QK <- function(corp) {
+sample_raw_overlaps <- function(overlap_list, seed = 42) {
+  set.seed(seed)
   
-  doc_names <- docnames(corp)
+  target_ns <- c(1, 3, 6)
+  corpus_order <- c("ACL", "Stack", "Amazon", "Enron", "Blog", "PJ")
   
-  K <- corpus_subset(corp, grepl("^known", doc_names)) |>
-    ntoken() |>
-    mean() |>
-    round(0)
-
-  Q <- corpus_subset(corp, grepl("^unknown", doc_names)) |>
-    ntoken() |>
-    mean() |>
-    round(0)
+  # Combine lists and divide lists of ngrams into singles
+  raw_tokens <- dplyr::bind_rows(overlap_list, .id = "Corpus") %>%
+    dplyr::filter(n %in% target_ns) %>%
+    dplyr::filter(unique_overlap != "" & !is.na(unique_overlap)) %>%
+    tidyr::separate_longer_delim(unique_overlap, delim = "|") %>%
+    # Prevent duplicate identical strings from occupying the same cell sample
+    dplyr::distinct(Corpus, n, unique_overlap)
   
-  cat("K: ", K, "\n")
-  cat("Q: ", Q, "\n")
+  sampled_tokens <- raw_tokens %>%
+    dplyr::group_by(Corpus, n) %>%
+    dplyr::slice_sample(n = 5, replace = FALSE) %>%
+    dplyr::ungroup()
+  
+  formatted_tokens <- sampled_tokens %>%
+    dplyr::group_by(Corpus, n) %>%
+    dplyr::summarise(
+      examples = paste(unique_overlap, collapse = "\n"),
+      .groups = "drop"
+    )
+  
+  all_combos <- expand.grid(
+    Corpus = corpus_order,
+    n = target_ns,
+    stringsAsFactors = FALSE
+  )
+  
+  final_table <- all_combos %>%
+    dplyr::left_join(formatted_tokens, by = c("Corpus", "n")) %>%
+    dplyr::mutate(examples = tidyr::replace_na(examples, "[No matches]")) %>%
+    tidyr::pivot_wider(names_from = Corpus, values_from = examples) %>%
+    dplyr::arrange(n) %>%
+    dplyr::mutate(n = dplyr::case_when(
+      n == 1 ~ "Unigrams (1-grams)",
+      n == 3 ~ "Trigrams (3-grams)",
+      n == 6 ~ "Six-grams (6-grams)"
+    ))
+  
+  final_df <- as.data.frame(final_table)
+  rownames(final_df) <- final_df$n
+  final_df$n <- NULL
+  final_df <- final_df[, corpus_order]
+  
+  return(final_df)
 }
